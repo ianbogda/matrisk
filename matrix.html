@@ -6,6 +6,7 @@
   <title>M@TRISK - Pilotage des risques, des processus et de la conformité</title>
   <script src="https://cdn.jsdelivr.net/npm/docx/build/index.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvg@3.0.10/lib/umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
 
@@ -256,6 +257,53 @@
           background: rgba(13, 110, 253, .06);
       }
 
+      /* Zone (Pilotage / Métier / Support) : hauteur auto */
+      .mp-zone {
+        padding: 22px 22px 18px 22px;
+        border-radius: 18px;
+        min-height: unset;     /* IMPORTANT : enlève la hauteur mini fixe si tu en as */
+        height: auto;          /* IMPORTANT */
+      }
+
+      /* Titre de zone */
+      .mp-zone-title {
+        font-weight: 800;
+        letter-spacing: .5px;
+        margin: 0 0 14px 0;
+      }
+
+      /* Conteneur des polygones dans une zone */
+      .mp-zone-items {
+        display: flex;
+        flex-wrap: wrap;     /* IMPORTANT : retour à la ligne */
+        gap: 18px 18px;      /* espace horizontal/vertical */
+        align-items: flex-start;
+      }
+
+      /* Chaque “polygone” (cartouche) */
+      .mp-tag {
+        flex: 0 0 auto;      /* pas d'étirement qui écrase */
+        width: 230px;        /* ajuste si besoin */
+        max-width: 100%;
+      }
+
+      /* Si ce sont des <svg> inline, assure leur bloc */
+      .mp-tag svg,
+      svg.mp-tag {
+        display: block;
+        width: 230px;        /* même valeur que .mp-tag */
+        height: auto;
+      }
+
+      .mp-zone-p { background: #eef5ff; }
+      .mp-zone-p .mp-zone-title { color: #0d6efd; }
+
+      .mp-zone-m { background: #effaef; }
+      .mp-zone-m .mp-zone-title { color: #198754; }
+
+      .mp-zone-s { background: #fff4e6; }
+      .mp-zone-s .mp-zone-title { color: #fd7e14; }
+
       .flow-step {
           position: relative;
       }
@@ -327,6 +375,14 @@
           max-width: 100%;
           height: auto;
           margin: 12px 0 20px 0;
+      }
+
+      @media (max-width: 768px) {
+        .mp-tag,
+        .mp-tag svg,
+        svg.mp-tag {
+            width: 100%;
+        }
       }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -422,23 +478,41 @@
                             <div class="small text-muted">Pilotage (haut) · Métier (milieu) · Support (bas)</div>
                         </div>
 
-                        <div class="border rounded-4 p-2 bg-white">
+                        <div class="border rounded-4 p-2 bg-white" id="mpMapWrap">
+                            <div>
+                                <div class="mp-zone mp-zone-p">
+                                    <div class="mp-zone-title">PILOTAGE (P)</div>
+                                    <div class="mp-zone-items" id="mpZoneP"></div>
+                                </div>
+
+                                <div class="mp-zone mp-zone-m">
+                                    <div class="mp-zone-title">MÉTIER (M)</div>
+                                    <div class="mp-zone-items" id="mpZoneM"></div>
+                                </div>
+
+                                <div class="mp-zone mp-zone-s">
+                                    <div class="mp-zone-title">SUPPORT (S)</div>
+                                    <div class="mp-zone-items" id="mpZoneS"></div>
+                                </div>
+                            </div>
+<!--
                             <svg id="mpMap" viewBox="0 0 1200 720" width="100%" height="460" role="img" aria-label="Cartographie des macroprocessus">
-                                <!-- Fond zones -->
+                                <!-- Fond zones 
                                 <rect x="10" y="10" width="1180" height="210" rx="20" fill="#eef5ff"></rect>
                                 <rect x="10" y="255" width="1180" height="210" rx="20" fill="#f3fff0"></rect>
                                 <rect x="10" y="500" width="1180" height="210" rx="20" fill="#fff6ea"></rect>
 
-                                <!-- Titres zones -->
+                                <!-- Titres zones 
                                 <text x="30" y="55" font-size="26" font-weight="700" fill="#0d6efd">PILOTAGE (P)</text>
                                 <text x="30" y="300" font-size="26" font-weight="700" fill="#198754">MÉTIER (M)</text>
                                 <text x="30" y="545" font-size="26" font-weight="700" fill="#fd7e14">SUPPORT (S)</text>
 
-                                <!-- Conteneurs dynamiques -->
+                                <!-- Conteneurs dynamiques 
                                 <g id="mpPilotage"></g>
                                 <g id="mpMetier"></g>
                                 <g id="mpSupport"></g>
                             </svg>
+                        -->
                         </div>
 
                     </div>
@@ -985,7 +1059,6 @@
           });
       }
 
-
       function tagShapePoints(cx, cy, w, h, orientation) {
           // Forme = rectangle + triangle (5 côtés)
           // orientation: "down" | "right" | "up"
@@ -1036,112 +1109,132 @@
           return pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
       }
 
+      function createMpTag(mp, type, COLORS) {
+        const w = 210, h = 90;
+        const orientation = (type === "P") ? "down" : (type === "M") ? "right" : "up";
+
+        // Conteneur HTML (pour flex-wrap)
+        const wrap = document.createElement("div");
+        wrap.className = "mp-tag";
+        wrap.setAttribute("data-mp-id", mp.id);
+
+        // Mini-SVG autonome
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+        svg.setAttribute("width", "210");
+        svg.setAttribute("height", "90");
+        svg.setAttribute("role", "button");
+        svg.setAttribute("tabindex", "0");
+        svg.style.cursor = "pointer";
+
+        // Forme (points dans repère local)
+        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        poly.setAttribute("points", ptsToString(tagShapePoints(w/2, h/2, w, h, orientation)));
+        poly.setAttribute("fill", COLORS[type].fill);
+        poly.setAttribute("opacity", "0.92");
+        poly.setAttribute("class", "mp-shape");
+
+        // Textes
+        const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t1.setAttribute("x", w/2);
+        t1.setAttribute("y", 36);
+        t1.setAttribute("text-anchor", "middle");
+        t1.setAttribute("font-size", "18");
+        t1.setAttribute("font-weight", "800");
+        t1.setAttribute("fill", COLORS[type].text);
+        t1.textContent = mp.id;
+
+        const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t2.setAttribute("x", w/2);
+        t2.setAttribute("y", 60);
+        t2.setAttribute("text-anchor", "middle");
+        t2.setAttribute("font-size", "13");
+        t2.setAttribute("font-weight", "600");
+        t2.setAttribute("fill", COLORS[type].text);
+
+        const name = (mp.name || "").trim();
+        t2.textContent = name.length > 26 ? name.slice(0, 25) + "…" : name;
+
+        // Events (sur le svg : plus simple)
+        svg.addEventListener("click", () => {
+            if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
+        });
+
+        svg.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof openProcessTabForMacroprocess === "function") openProcessTabForMacroprocess(mp.id);
+        });
+
+        // Accessibilité (Enter / Space)
+        svg.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
+            }
+        });
+
+        svg.appendChild(poly);
+        svg.appendChild(t1);
+        svg.appendChild(t2);
+        wrap.appendChild(svg);
+        return wrap;
+      }
+
+      function captureElementOffscreen(el, widthPx = 1100) {
+        if (!el) return null;
+
+        const clone = el.cloneNode(true);
+        const holder = document.createElement("div");
+        holder.style.position = "fixed";
+        holder.style.left = "-10000px";
+        holder.style.top = "0";
+        holder.style.width = widthPx + "px";
+        holder.style.background = "#fff";
+        holder.style.padding = "12px";
+        holder.style.zIndex = "999999";
+        holder.appendChild(clone);
+        document.body.appendChild(holder);
+
+        new Promise(r => setTimeout(r, 50));
+
+        const canvas = html2canvas(clone, {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true
+        });
+
+        document.body.removeChild(holder);
+
+        // ✅ ICI on retourne la dataURL
+        return canvas.toDataURL("image/png");//.toDataURL("image/png");
+      }
+
       function renderMacroprocessMap() {
-          const svg = $("mpMap");
-          if (!svg) return;
+        const zoneP = $("mpZoneP");
+        const zoneM = $("mpZoneM");
+        const zoneS = $("mpZoneS");
+        if (!zoneP || !zoneM || !zoneS) return;
 
-          const gP = $("mpPilotage");
-          const gM = $("mpMetier");
-          const gS = $("mpSupport");
-          if (!gP || !gM || !gS) return;
+        zoneP.innerHTML = "";
+        zoneM.innerHTML = "";
+        zoneS.innerHTML = "";
 
-          gP.innerHTML = "";
-          gM.innerHTML = "";
-          gS.innerHTML = "";
+        const all = (state.macroprocesses || []);
+        const pilotage = all.filter(x => x.type === "P");
+        const metier   = all.filter(x => x.type === "M");
+        const support  = all.filter(x => x.type === "S");
 
-          const all = (state.macroprocesses || []);
+        const COLORS = {
+            P: { fill: "#0d6efd", text: "#ffffff" },
+            M: { fill: "#198754", text: "#ffffff" },
+            S: { fill: "#fd7e14", text: "#1f2937" }
+        };
 
-          const pilotage = all.filter(x => x.type === "P");
-          const metier = all.filter(x => x.type === "M");
-          const support = all.filter(x => x.type === "S");
-
-          // Couleurs (famille)
-          const COLORS = {
-              P: {
-                  fill: "#0d6efd",
-                  text: "#ffffff"
-              },
-              M: {
-                  fill: "#198754",
-                  text: "#ffffff"
-              },
-              S: {
-                  fill: "#fd7e14",
-                  text: "#1f2937"
-              }
-          };
-
-          // Layout (grille simple par zone)
-          // Zone Pilotage: y ~ 120 ; Métier: y ~ 365 ; Support: y ~ 610
-          const layoutZone = (items, zoneY, orientation, group, type) => {
-              const colCount = Math.max(1, Math.min(5, items.length || 1));
-              const spacingX = 230; // espacement horizontal
-              const startX = 260; // laisse de la place aux titres à gauche
-              const maxPerRow = 4; // lignes si beaucoup
-
-              items.forEach((mp, idx) => {
-                  const row = Math.floor(idx / maxPerRow);
-                  const col = idx % maxPerRow;
-
-                  const cx = startX + col * spacingX;
-                  const cy = zoneY + row * 85;
-
-                  const w = 210,
-                      h = 90;
-
-                  const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                  poly.setAttribute("points", ptsToString(tagShapePoints(cx, cy, w, h, orientation)));
-                  poly.setAttribute("fill", COLORS[type].fill);
-                  poly.setAttribute("opacity", "0.92");
-                  poly.setAttribute("class", "mp-shape");
-                  poly.setAttribute("data-mp-id", mp.id);
-                  poly.setAttribute("tabindex", "0");
-                  poly.setAttribute("role", "button");
-
-                  // Option: clic => ouvrir fiche macroprocessus
-                  poly.addEventListener("click", () => {
-                      if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
-                  });
-                  // Option: clic => ouvrir onglet processus
-                  poly.addEventListener("dblclick", (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openProcessTabForMacroprocess(mp.id);
-                  });
-
-                  // Label (2 lignes)
-                  const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                  t1.setAttribute("x", cx);
-                  t1.setAttribute("y", cy - 6);
-                  t1.setAttribute("text-anchor", "middle");
-                  t1.setAttribute("font-size", "18");
-                  t1.setAttribute("font-weight", "800");
-                  t1.setAttribute("fill", COLORS[type].text);
-                  t1.setAttribute("class", "mp-label");
-                  t1.textContent = mp.id;
-
-                  const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                  t2.setAttribute("x", cx);
-                  t2.setAttribute("y", cy + 20);
-                  t2.setAttribute("text-anchor", "middle");
-                  t2.setAttribute("font-size", "14");
-                  t2.setAttribute("font-weight", "600");
-                  t2.setAttribute("fill", COLORS[type].text);
-                  t2.setAttribute("class", "mp-label");
-
-                  // tronque le nom pour rester propre
-                  const name = (mp.name || "").trim();
-                  t2.textContent = name.length > 30 ? name.slice(0, 29) + "…" : name;
-
-                  group.appendChild(poly);
-                  group.appendChild(t1);
-                  group.appendChild(t2);
-              });
-          };
-
-          layoutZone(pilotage, 130, "down", gP, "P");
-          layoutZone(metier, 380, "right", gM, "M");
-          layoutZone(support, 625, "up", gS, "S");
+        // Append tags (flow layout géré par CSS flex-wrap)
+        pilotage.forEach(mp => zoneP.appendChild(createMpTag(mp, "P", COLORS)));
+        metier.forEach(mp   => zoneM.appendChild(createMpTag(mp, "M", COLORS)));
+        support.forEach(mp  => zoneS.appendChild(createMpTag(mp, "S", COLORS)));
       }
 
       function openProcessTabForMacroprocess(mpId) {
@@ -2292,21 +2385,23 @@
 
           const computed = state.risks.map(computeRisk);
 
-          const shown = computed.filter(r => r.visible !== false);
+          let shown = computed.filter(r => r.visible !== false);
 
           // === FILTRES PROCESSUS / PROCEDURE ===
           const fp = document.getElementById("matrixFilterProcess")?.value || "";
           const fpr = document.getElementById("matrixFilterProcedure")?.value || "";
 
-          // Filtre par processus
-          if (fp) {
-              shown = shown.filter(r => r.processId === fp);
-          }
-
           // Filtre par procédure
           if (fpr) {
-              const allowedRiskIds = new Set(getRiskIdsForProcedure(fpr));
-              shown = shown.filter(r => allowedRiskIds.has(r.id));
+            const allowed = getRiskIdsForProcedure(fpr).map(normalizeRiskId);
+            const allowedSet = new Set(allowed);
+
+            // Si procédure sélectionnée mais 0 risques référencés => on NE filtre PAS (sinon tout disparaît)
+            if (allowedSet.size > 0) {
+                shown = shown.filter(r => allowedSet.has(normalizeRiskId(r.id)));
+            } else {
+                console.warn("[MATRIX] Procédure sélectionnée mais aucun riskId trouvé :", fpr);
+            }
           }
 
           $("countShown").textContent = shown.length;
@@ -2370,15 +2465,43 @@
               ).join("");
       }
 
-      function getRiskIdsForProcedure(procedureId) {
-          const pr = (state.procedures || []).find(p => p.id === procedureId);
-          if (!pr || !pr.steps) return [];
+      function normalizeRiskId(x) {
+        return String(x || "").trim().toUpperCase();
+      }
 
-          const ids = new Set();
-          pr.steps.forEach(s => {
-              (s.riskIds || []).forEach(rid => ids.add(rid));
-          });
-          return Array.from(ids);
+      function getRiskIdsForProcedure(procedureId) {
+        const pr = (state.procedures || []).find(p => String(p.id) === String(procedureId));
+        if (!pr || !Array.isArray(pr.steps)) return [];
+
+        const ids = new Set();
+
+        pr.steps.forEach(s => {
+            // 1) cas normal : riskIds = ["R1","R2"]
+            if (Array.isArray(s.riskIds)) {
+            s.riskIds.forEach(rid => {
+                const n = normalizeRiskId(rid);
+                if (n) ids.add(n);
+            });
+            return;
+            }
+
+            // 2) cas fréquent : riskIds = "R1,R2"
+            if (typeof s.riskIds === "string") {
+            s.riskIds.split(",").forEach(rid => {
+                const n = normalizeRiskId(rid);
+                if (n) ids.add(n);
+            });
+            return;
+            }
+
+            // 3) cas fallback : champ unique riskId
+            if (s.riskId) {
+            const n = normalizeRiskId(s.riskId);
+            if (n) ids.add(n);
+            }
+        });
+
+        return Array.from(ids);
       }
 
 
@@ -3032,19 +3155,19 @@
           /* ========= 1. CARTOGRAPHIE MACROPROCESSUS ========= */
 
           // === Cartographie macroprocessus (PNG) ===
-          const svg = document.getElementById("mpMap");
-          const pngDataUrl = svgElementToPngDataUrl(svg, 1200);
+          const mpWrap = document.getElementById("mpMapWrap");
+          const mpPng = captureElementOffscreen(mpWrap, 1100);
 
-          const macroprocessPngHtml = pngDataUrl ?
-              `<img src="${pngDataUrl}" style="width:100%; max-width:1200px; display:block; margin:2px auto;" />` :
-              `<p><em>Cartographie indisponible.</em></p>`;
-          wrap.innerHTML += `<h2>1. Cartographie des macroprocessus</h2>
-		<p>
-			Cette cartographie présente les macroprocessus de pilotage, métier et support.
-		</p>
-		${macroprocessPngHtml}
-		<div class="page-break"></div>
-	  `;
+          const mpHtml = mpPng
+            ? `<img src="${mpPng}" style="width:100%; max-width:680px; display:block; margin:12px auto;" />`
+            : `<p><em>Cartographie indisponible.</em></p>`;
+
+          wrap.innerHTML += `
+            <h2>1. Cartographie des macroprocessus</h2>
+            <p>Cette cartographie présente les macroprocessus de pilotage, métier et support.</p>
+            ${mpHtml}
+            <div class="page-break"></div>
+            `;
           state.macroprocesses.forEach(mp => {
               wrap.innerHTML += `
 		  <h3>${mp.id} – ${mp.name}</h3>
@@ -3322,7 +3445,26 @@
           a.click();
       });
 
+      $("matrixFilterProcedure")?.addEventListener("change", () => {
+        const fpr = document.getElementById("matrixFilterProcedure").value || "";
+        if (!fpr) { renderMatrix(); return; }
 
+        const pr = (state.procedures || []).find(p => String(p.id) === String(fpr));
+        if (pr?.processId) {
+            const selP = document.getElementById("matrixFilterProcess");
+            if (selP) selP.value = pr.processId;
+        }
+
+        renderMatrix();
+      });
+
+      $("btnClearMatrixFilters")?.addEventListener("click", () => {
+        const p = document.getElementById("matrixFilterProcess");
+        const pr = document.getElementById("matrixFilterProcedure");
+        if (p) p.value = "";
+        if (pr) pr.value = "";
+        renderMatrix();
+      });
 
       function openTab(tabPaneId) {
           const btn = document.querySelector(`button[data-bs-target="#${tabPaneId}"]`);
