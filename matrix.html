@@ -1,501 +1,537 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>M@TRISK - Pilotage des risques, des processus et de la conformité</title>
-  <script src="https://cdn.jsdelivr.net/npm/docx/build/index.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvg@3.0.10/lib/umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-
-  <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
-
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <style>
-      :root {
-          --cell-size: 84px;
-          --grid-gap: 6px;
-      }
-
-      body {
-          background: #f6f7f9;
-      }
-
-      .card {
-          border: 0;
-          border-radius: 14px;
-      }
-
-      .shadow-soft {
-          box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
-      }
-
-      .mono {
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      }
-
-      .small-muted {
-          color: #6c757d;
-          font-size: .9rem;
-      }
-
-      .pill {
-          border: 1px solid rgba(0, 0, 0, .12);
-          border-radius: 999px;
-          padding: .15rem .6rem;
-          font-size: .85rem;
-          background: #fff;
-      }
-
-      /* Matrix */
-      .matrix-wrap {
-          overflow-x: auto;
-      }
-
-      .matrix-area {
-          display: grid;
-          grid-template-columns: 1fr 320px;
-          gap: 12px;
-          align-items: start;
-      }
-
-      @media (max-width: 1200px) {
-          .matrix-area {
-              grid-template-columns: 1fr;
-          }
-      }
-
-      .matrix {
-          display: grid;
-          grid-template-columns: 120px repeat(5, var(--cell-size));
-          grid-template-rows: 48px repeat(5, var(--cell-size));
-          gap: var(--grid-gap);
-          align-items: stretch;
-          min-width: calc(120px + 5*var(--cell-size) + 5*var(--grid-gap));
-      }
-
-      .m-head,
-      .m-side {
-          background: #fff;
-          border-radius: 12px;
-          border: 1px solid rgba(0, 0, 0, .08);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-      }
-
-      .m-side {
-          padding: 0 10px;
-          justify-content: flex-start;
-      }
-
-      .cell {
-          position: relative;
-          border-radius: 12px;
-          border: 1px solid rgba(0, 0, 0, .10);
-          overflow: hidden;
-          background: #fff;
-      }
-
-      .cell .score {
-          position: absolute;
-          bottom: 6px;
-          right: 8px;
-          font-size: .8rem;
-          opacity: .7;
-          font-weight: 600;
-      }
-
-      /* Heat colors */
-      .heat-g {
-          background: #cfe9d6;
-      }
-
-      .heat-y {
-          background: #ffe8a3;
-      }
-
-      .heat-o {
-          background: #ffc98a;
-      }
-
-      .heat-r {
-          background: #ffb3b3;
-      }
-
-      /* Markers */
-      .marker {
-          position: absolute;
-          width: 28px;
-          height: 28px;
-          border-radius: 999px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: .75rem;
-          font-weight: 700;
-          box-shadow: 0 8px 16px rgba(0, 0, 0, .12);
-          user-select: none;
-          cursor: pointer;
-          border: 2px solid rgba(255, 255, 255, .9);
-      }
-
-      .marker.inherent {
-          background: #0d6efd;
-          color: #fff;
-          left: 10px;
-          top: 10px;
-      }
-
-      .marker.residual {
-          background: #198754;
-          color: #fff;
-          left: 44px;
-          top: 10px;
-      }
-
-      .marker.same {
-          left: 28px;
-      }
-
-      .legend-dot {
-          width: 12px;
-          height: 12px;
-          border-radius: 999px;
-          display: inline-block;
-          vertical-align: middle;
-      }
-
-      .dot-blue {
-          background: #0d6efd;
-      }
-
-      .dot-green {
-          background: #198754;
-      }
-
-      /* Filter list (right) */
-      .risk-list {
-          max-height: 420px;
-          overflow: auto;
-          border: 1px solid rgba(0, 0, 0, .08);
-          border-radius: 12px;
-          background: #fff;
-      }
-
-      .risk-item {
-          display: flex;
-          gap: 10px;
-          align-items: flex-start;
-          padding: 10px 12px;
-          border-bottom: 1px solid rgba(0, 0, 0, .06);
-      }
-
-      .risk-item:last-child {
-          border-bottom: 0;
-      }
-
-      .risk-item:hover {
-          background: rgba(13, 110, 253, .04);
-      }
-
-      .risk-item .meta {
-          flex: 1;
-          cursor: pointer;
-      }
-
-      .risk-item .meta .title {
-          font-weight: 600;
-          line-height: 1.15;
-      }
-
-      .risk-item .meta .sub {
-          font-size: .85rem;
-          color: #6c757d;
-      }
-
-      .risk-item .tag {
-          white-space: nowrap;
-      }
-
-      /* Table */
-      .table thead th {
-          white-space: nowrap;
-      }
-
-      .nowrap {
-          white-space: nowrap;
-      }
-
-      .required::after {
-          content: " *";
-          color: #dc3545;
-      }
-
-      /* Selected highlight in list */
-      .risk-item.selected {
-          outline: 2px solid rgba(13, 110, 253, .35);
-          outline-offset: -2px;
-          background: rgba(13, 110, 253, .06);
-      }
-
-      .mp-shape {
-          cursor: pointer;
-          filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .10));
-      }
-
-      .mp-label {
-          font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      }
-
-      .mp-row-selected {
-          outline: 2px solid rgba(13, 110, 253, .35);
-          outline-offset: -2px;
-          background: rgba(13, 110, 253, .06);
-      }
-
-      /* Zone (Pilotage / Métier / Support) : hauteur auto */
-      .mp-zone {
-        padding: 22px 22px 18px 22px;
-        border-radius: 18px;
-        min-height: unset;     /* IMPORTANT : enlève la hauteur mini fixe si tu en as */
-        height: auto;          /* IMPORTANT */
-      }
-
-      /* Titre de zone */
-      .mp-zone-title {
-        font-weight: 800;
-        letter-spacing: .5px;
-        margin: 0 0 14px 0;
-      }
-
-      /* Conteneur des polygones dans une zone */
-      .mp-zone-items {
-        display: flex;
-        flex-wrap: wrap;     /* IMPORTANT : retour à la ligne */
-        gap: 18px 18px;      /* espace horizontal/vertical */
-        align-items: flex-start;
-      }
-
-      /* Chaque “polygone” (cartouche) */
-      .mp-tag {
-        flex: 0 0 auto;      /* pas d'étirement qui écrase */
-        width: 230px;        /* ajuste si besoin */
-        max-width: 100%;
-      }
-
-      /* Si ce sont des <svg> inline, assure leur bloc */
-      .mp-tag svg,
-      svg.mp-tag {
-        display: block;
-        width: 230px;        /* même valeur que .mp-tag */
-        height: auto;
-      }
-
-      .mp-zone-p { background: #eef5ff; }
-      .mp-zone-p .mp-zone-title { color: #0d6efd; }
-
-      .mp-zone-m { background: #effaef; }
-      .mp-zone-m .mp-zone-title { color: #198754; }
-
-      .mp-zone-s { background: #fff4e6; }
-      .mp-zone-s .mp-zone-title { color: #fd7e14; }
-
-      .flow-step {
-          position: relative;
-      }
-
-      .flow-step::after {
-          content: "";
-          position: absolute;
-          left: 50%;
-          bottom: -10px;
-          width: 2px;
-          height: 16px;
-          background: rgba(0, 0, 0, .15);
-          transform: translateX(-50%);
-      }
-
-      .flow-last::after {
-          display: none;
-      }
-
-      .risk-badge {
-          cursor: pointer;
-      }
-
-      .step-card {
-          border: 1px solid rgba(0, 0, 0, .10);
-          border-radius: 12px;
-          padding: 8px 10px;
-          background: #fff;
-      }
-
-      .step-actions button {
-          padding: 2px 8px;
-      }
-
-      .word-export {
-          font-family: Calibri, Arial, sans-serif;
-          font-size: 11pt;
-      }
-
-      .word-export h1 {
-          font-size: 20pt;
-      }
-
-      .word-export h2 {
-          font-size: 16pt;
-      }
-
-      .word-export h3 {
-          font-size: 14pt;
-      }
-
-      .word-export table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 16px;
-      }
-
-      .word-export th,
-      .word-export td {
-          border: 1px solid #333;
-          padding: 4px 6px;
-      }
-
-      .word-export .page-break {
-          page-break-before: always;
-      }
-
-      .word-export svg {
-          max-width: 100%;
-          height: auto;
-          margin: 12px 0 20px 0;
-      }
-
-      @media (max-width: 768px) {
-        .mp-tag,
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>M@TRISK - Pilotage des risques, des processus et de la conformité</title>
+    <script src="https://cdn.jsdelivr.net/npm/docx/build/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvg@3.0.10/lib/umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --cell-size: 84px;
+            --grid-gap: 6px;
+        }
+
+        body {
+            background: #f6f7f9;
+        }
+
+        .card {
+            border: 0;
+            border-radius: 14px;
+        }
+
+        .shadow-soft {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .small-muted {
+            color: #6c757d;
+            font-size: .9rem;
+        }
+
+        .pill {
+            border: 1px solid rgba(0, 0, 0, .12);
+            border-radius: 999px;
+            padding: .15rem .6rem;
+            font-size: .85rem;
+            background: #fff;
+        }
+
+        /* Matrix */
+        .matrix-wrap {
+            overflow-x: auto;
+        }
+
+        .matrix-area {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 12px;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .matrix-area {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .matrix {
+            display: grid;
+            grid-template-columns: 120px repeat(5, var(--cell-size));
+            grid-template-rows: 48px repeat(5, var(--cell-size));
+            gap: var(--grid-gap);
+            align-items: stretch;
+            min-width: calc(120px + 5*var(--cell-size) + 5*var(--grid-gap));
+        }
+
+        #matrixOverlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            /* au-dessus des cases, sous les popovers si besoin */
+        }
+
+        #riskMatrixWrap {
+            position: relative;
+        }
+
+        .m-head,
+        .m-side {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, .08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .m-side {
+            padding: 0 10px;
+            justify-content: flex-start;
+        }
+
+        .cell {
+            position: relative;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, .10);
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .cell .score {
+            position: absolute;
+            bottom: 6px;
+            right: 8px;
+            font-size: .8rem;
+            opacity: .7;
+            font-weight: 600;
+        }
+
+        /* Heat colors */
+        .heat-g {
+            background: #cfe9d6;
+        }
+
+        .heat-y {
+            background: #ffe8a3;
+        }
+
+        .heat-o {
+            background: #ffc98a;
+        }
+
+        .heat-r {
+            background: #ffb3b3;
+        }
+
+        /* Markers */
+        .marker {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .75rem;
+            font-weight: 700;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, .12);
+            user-select: none;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, .9);
+        }
+
+        .marker.inherent {
+            background: #0d6efd;
+            color: #fff;
+            left: 10px;
+            top: 10px;
+        }
+
+        .marker.residual {
+            background: #198754;
+            color: #fff;
+            left: 44px;
+            top: 10px;
+        }
+
+        .marker.same {
+            left: 28px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .dot-blue {
+            background: #0d6efd;
+        }
+
+        .dot-green {
+            background: #198754;
+        }
+
+        /* Filter list (right) */
+        .risk-list {
+            max-height: 420px;
+            overflow: auto;
+            border: 1px solid rgba(0, 0, 0, .08);
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .risk-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, .06);
+        }
+
+        .risk-item:last-child {
+            border-bottom: 0;
+        }
+
+        .risk-item:hover {
+            background: rgba(13, 110, 253, .04);
+        }
+
+        .risk-item .meta {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .risk-item .meta .title {
+            font-weight: 600;
+            line-height: 1.15;
+        }
+
+        .risk-item .meta .sub {
+            font-size: .85rem;
+            color: #6c757d;
+        }
+
+        .risk-item .tag {
+            white-space: nowrap;
+        }
+
+        /* Table */
+        .table thead th {
+            white-space: nowrap;
+        }
+
+        .nowrap {
+            white-space: nowrap;
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        /* Selected highlight in list */
+        .risk-item.selected {
+            outline: 2px solid rgba(13, 110, 253, .35);
+            outline-offset: -2px;
+            background: rgba(13, 110, 253, .06);
+        }
+
+        .mp-shape {
+            cursor: pointer;
+            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .10));
+        }
+
+        .mp-label {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+
+        .mp-row-selected {
+            outline: 2px solid rgba(13, 110, 253, .35);
+            outline-offset: -2px;
+            background: rgba(13, 110, 253, .06);
+        }
+
+        /* Zone (Pilotage / Métier / Support) : hauteur auto */
+        .mp-zone {
+            padding: 22px 22px 18px 22px;
+            border-radius: 18px;
+            min-height: unset;
+            /* IMPORTANT : enlève la hauteur mini fixe si tu en as */
+            height: auto;
+            /* IMPORTANT */
+        }
+
+        /* Titre de zone */
+        .mp-zone-title {
+            font-weight: 800;
+            letter-spacing: .5px;
+            margin: 0 0 14px 0;
+        }
+
+        /* Conteneur des polygones dans une zone */
+        .mp-zone-items {
+            display: flex;
+            flex-wrap: wrap;
+            /* IMPORTANT : retour à la ligne */
+            gap: 18px 18px;
+            /* espace horizontal/vertical */
+            align-items: flex-start;
+        }
+
+        /* Chaque “polygone” (cartouche) */
+        .mp-tag {
+            flex: 0 0 auto;
+            /* pas d'étirement qui écrase */
+            width: 230px;
+            /* ajuste si besoin */
+            max-width: 100%;
+        }
+
+        /* Si ce sont des <svg> inline, assure leur bloc */
         .mp-tag svg,
         svg.mp-tag {
-            width: 100%;
+            display: block;
+            width: 230px;
+            /* même valeur que .mp-tag */
+            height: auto;
         }
-      }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+        .mp-zone-p {
+            background: #eef5ff;
+        }
+
+        .mp-zone-p .mp-zone-title {
+            color: #0d6efd;
+        }
+
+        .mp-zone-m {
+            background: #effaef;
+        }
+
+        .mp-zone-m .mp-zone-title {
+            color: #198754;
+        }
+
+        .mp-zone-s {
+            background: #fff4e6;
+        }
+
+        .mp-zone-s .mp-zone-title {
+            color: #fd7e14;
+        }
+
+        .flow-step {
+            position: relative;
+        }
+
+        .flow-step::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: -10px;
+            width: 2px;
+            height: 16px;
+            background: rgba(0, 0, 0, .15);
+            transform: translateX(-50%);
+        }
+
+        .flow-last::after {
+            display: none;
+        }
+
+        .risk-badge {
+            cursor: pointer;
+        }
+
+        .step-card {
+            border: 1px solid rgba(0, 0, 0, .10);
+            border-radius: 12px;
+            padding: 8px 10px;
+            background: #fff;
+        }
+
+        .step-actions button {
+            padding: 2px 8px;
+        }
+
+        .word-export {
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 11pt;
+        }
+
+        .word-export h1 {
+            font-size: 20pt;
+        }
+
+        .word-export h2 {
+            font-size: 16pt;
+        }
+
+        .word-export h3 {
+            font-size: 14pt;
+        }
+
+        .word-export table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+
+        .word-export th,
+        .word-export td {
+            border: 1px solid #333;
+            padding: 4px 6px;
+        }
+
+        .word-export .page-break {
+            page-break-before: always;
+        }
+
+        .word-export svg {
+            max-width: 100%;
+            height: auto;
+            margin: 12px 0 20px 0;
+        }
+
+        @media (max-width: 768px) {
+
+            .mp-tag,
+            .mp-tag svg,
+            svg.mp-tag {
+                width: 100%;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
 <body>
-<div class="container-fluid py-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-        <div>
-            <h1 class="h3 mb-1">M@TRISK</h1>
-            <div class="small-muted">Pilotage des risques, des processus et de la conformité</div>
+    <div class="container-fluid py-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+            <div>
+                <h1 class="h3 mb-1">M@TRISK</h1>
+                <div class="small-muted">Pilotage des risques, des processus et de la conformité</div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" id="btnExportPdf">Export PDF</button>
+                <button class="btn btn-outline-primary" id="btnExportWord">Export Word</button>
+
+                <button class="btn btn-outline-secondary" id="btnExport">Exporter JSON</button>
+                <button class="btn btn-outline-secondary" id="btnImport">Importer JSON</button>
+                <input type="file" id="fileImport" accept="application/json" class="d-none">
+                <button class="btn btn-outline-danger" id="btnReset">Réinitialiser</button>
+
+            </div>
         </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary" id="btnExportPdf">Export PDF</button>
-            <button class="btn btn-outline-primary" id="btnExportWord">Export Word</button>
+        <ul class="nav nav-tabs mb-3" id="mainTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-macroprocessus" type="button">
+                    Macroprocessus
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-processus" type="button">
+                    Processus
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-procedures" type="button">
+                    Procédures
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-risques" type="button">
+                    Risques
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-domains">
+                    Maîtrise des domaines
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mp-domains">
+                    Macroprocessus × Domaines
+                </button>
+            </li>
 
-            <button class="btn btn-outline-secondary" id="btnExport">Exporter JSON</button>
-            <button class="btn btn-outline-secondary" id="btnImport">Importer JSON</button>
-            <input type="file" id="fileImport" accept="application/json" class="d-none">
-            <button class="btn btn-outline-danger" id="btnReset">Réinitialiser</button>
-
-        </div>
-    </div>
-    <ul class="nav nav-tabs mb-3" id="mainTabs" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-macroprocessus" type="button">
-                Macroprocessus
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-processus" type="button">
-                Processus
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-procedures" type="button">
-                Procédures
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-risques" type="button">
-                Risques
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-domains">
-                Maîtrise des domaines
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mp-domains">
-                Macroprocessus × Domaines
-            </button>
-        </li>
-
-    </ul>
+        </ul>
 
 
-    <div class="tab-content">
-        <div class="tab-pane fade show active" id="tab-macroprocessus">
-            <div class="row g-3">
-                <div class="col-xl-4">
-                    <div class="card shadow-soft p-3">
-                        <h5>Macroprocessus</h5>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-macroprocessus">
+                <div class="row g-3">
+                    <div class="col-xl-4">
+                        <div class="card shadow-soft p-3">
+                            <h5>Macroprocessus</h5>
 
-                        <label class="form-label">Type</label>
-                        <select class="form-select" id="mpType">
-                            <option value="P">Pilotage</option>
-                            <option value="M">Métier</option>
-                            <option value="S">Support</option>
-                        </select>
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="mpType">
+                                <option value="P">Pilotage</option>
+                                <option value="M">Métier</option>
+                                <option value="S">Support</option>
+                            </select>
 
-                        <label class="form-label mt-2">Code</label>
-                        <input class="form-control" id="mpCode" placeholder="MPP01">
+                            <label class="form-label mt-2">Code</label>
+                            <input class="form-control" id="mpCode" placeholder="MPP01">
 
-                        <label class="form-label mt-2">Nom</label>
-                        <input class="form-control" id="mpName">
+                            <label class="form-label mt-2">Nom</label>
+                            <input class="form-control" id="mpName">
 
-                        <label class="form-label mt-2">Responsable</label>
-                        <input class="form-control" id="mpOwner">
+                            <label class="form-label mt-2">Responsable</label>
+                            <input class="form-control" id="mpOwner">
 
-                        <label class="form-label mt-2">Objectifs</label>
-                        <textarea class="form-control" id="mpObjectives" rows="2"></textarea>
+                            <label class="form-label mt-2">Objectifs</label>
+                            <textarea class="form-control" id="mpObjectives" rows="2"></textarea>
 
-                        <button class="btn btn-primary mt-3" id="btnSaveMP">Enregistrer</button>
-                    </div>
-                </div>
-
-                <div class="col-xl-8">
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <h5 class="mb-0">Cartographie des macroprocessus</h5>
-                            <div class="small text-muted">Pilotage (haut) · Métier (milieu) · Support (bas)</div>
+                            <button class="btn btn-primary mt-3" id="btnSaveMP">Enregistrer</button>
                         </div>
+                    </div>
 
-                        <div class="border rounded-4 p-2 bg-white" id="mpMapWrap">
-                            <div>
-                                <div class="mp-zone mp-zone-p">
-                                    <div class="mp-zone-title">PILOTAGE (P)</div>
-                                    <div class="mp-zone-items" id="mpZoneP"></div>
-                                </div>
-
-                                <div class="mp-zone mp-zone-m">
-                                    <div class="mp-zone-title">MÉTIER (M)</div>
-                                    <div class="mp-zone-items" id="mpZoneM"></div>
-                                </div>
-
-                                <div class="mp-zone mp-zone-s">
-                                    <div class="mp-zone-title">SUPPORT (S)</div>
-                                    <div class="mp-zone-items" id="mpZoneS"></div>
-                                </div>
+                    <div class="col-xl-8">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h5 class="mb-0">Cartographie des macroprocessus</h5>
+                                <div class="small text-muted">Pilotage (haut) · Métier (milieu) · Support (bas)</div>
                             </div>
-<!--
+
+                            <div class="border rounded-4 p-2 bg-white" id="mpMapWrap">
+                                <div>
+                                    <div class="mp-zone mp-zone-p">
+                                        <div class="mp-zone-title">PILOTAGE (P)</div>
+                                        <div class="mp-zone-items" id="mpZoneP"></div>
+                                    </div>
+
+                                    <div class="mp-zone mp-zone-m">
+                                        <div class="mp-zone-title">MÉTIER (M)</div>
+                                        <div class="mp-zone-items" id="mpZoneM"></div>
+                                    </div>
+
+                                    <div class="mp-zone mp-zone-s">
+                                        <div class="mp-zone-title">SUPPORT (S)</div>
+                                        <div class="mp-zone-items" id="mpZoneS"></div>
+                                    </div>
+                                </div>
+                                <!--
                             <svg id="mpMap" viewBox="0 0 1200 720" width="100%" height="460" role="img" aria-label="Cartographie des macroprocessus">
                                 <!-- Fond zones 
                                 <rect x="10" y="10" width="1180" height="210" rx="20" fill="#eef5ff"></rect>
@@ -513,530 +549,533 @@
                                 <g id="mpSupport"></g>
                             </svg>
                         -->
+                            </div>
+
                         </div>
 
-                    </div>
-
-                    <div class="card shadow-soft p-3 mt-3">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <h5 class="mb-0">Liste des macroprocessus</h5>
-                            <input class="form-control form-control-sm" id="mpSearch" style="max-width:320px;" placeholder="Rechercher (code, nom, type)…">
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Type</th>
-                                        <th>Nom</th>
-                                        <th>Responsable</th>
-                                        <th class="nowrap">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="mpTbody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-        </div>
-        <div class="tab-pane fade" id="tab-processus">
-            <div class="row g-3">
-                <!-- Colonne gauche : liste des processus du macroprocessus sélectionné -->
-                <div class="col-12 col-xl-4">
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <h5 class="mb-0">Processus</h5>
-                            <span class="pill">MP <span class="mono" id="procMpBadge">—</span></span>
-                        </div>
-
-                        <div class="small text-muted mt-1">
-                            Double-clic sur un macroprocessus = ouverture ici + filtrage automatique.
-                        </div>
-
-                        <div class="mt-2">
-                            <label class="form-label mb-1">Macroprocessus</label>
-                            <select class="form-select form-select-sm" id="procMpSelect"></select>
-                        </div>
-
-                        <input class="form-control form-control-sm mt-2" id="procSearch" placeholder="Rechercher (code, nom)…">
-
-                        <div class="risk-list mt-2" id="procList" style="max-height:520px;"></div>
-
-                        <div class="d-flex gap-2 mt-2">
-                            <button class="btn btn-sm btn-primary" id="btnNewProcess">Nouveau</button>
-                            <button class="btn btn-sm btn-outline-secondary" id="btnClearProcess">Vider</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Colonne droite : fiche ISO du processus -->
-                <div class="col-12 col-xl-8">
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                            <h5 class="mb-0">Fiche processus</h5>
-                            <span class="pill">Risques <span class="mono" id="procRiskCount">0</span></span>
-                            <span class="pill">Code <span class="mono" id="procCodeBadge">—</span></span>
-                        </div>
-
-
-                        <div class="row g-2 mt-1">
-                            <div class="col-md-4">
-                                <label class="form-label required">Code</label>
-                                <input class="form-control" id="procId" placeholder="MPP01-001">
-                            </div>
-                            <div class="col-md-8">
-                                <label class="form-label required">Nom du processus</label>
-                                <input class="form-control" id="procName" placeholder="Gestion des risques mails">
+                        <div class="card shadow-soft p-3 mt-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h5 class="mb-0">Liste des macroprocessus</h5>
+                                <input class="form-control form-control-sm" id="mpSearch" style="max-width:320px;" placeholder="Rechercher (code, nom, type)…">
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label">Pilote</label>
-                                <input class="form-control" id="procPilot" placeholder="SGE">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Finalité / Objectif</label>
-                                <input class="form-control" id="procPurpose" placeholder="Maîtriser les risques de la procédure mails">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Périmètre</label>
-                                <input class="form-control" id="procScope" placeholder="EPLE – secrétariat / gestion / SRH…">
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Entrées (inputs)</label>
-                                <textarea class="form-control" id="procInputs" rows="2" placeholder="Courriels entrants, demandes usagers, pièces jointes…"></textarea>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Sorties (outputs)</label>
-                                <textarea class="form-control" id="procOutputs" rows="2" placeholder="Courriels classés, décisions tracées, preuves auditables…"></textarea>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Ressources / moyens</label>
-                                <textarea class="form-control" id="procResources" rows="2" placeholder="Outlook, arborescence partagée, droits, formations…"></textarea>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Interactions (amont / aval)</label>
-                                <textarea class="form-control" id="procInteractions" rows="2" placeholder="Amont: direction / enseignants… Aval: compta, RH, vie scolaire…"></textarea>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Indicateurs / KPI</label>
-                                <textarea class="form-control" id="procKpi" rows="2" placeholder="% mails classés < 30j, nb écarts inspection, délai réponse…"></textarea>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Risques & maîtrises (liens)</label>
-                                <textarea class="form-control" id="procRisks" rows="2" placeholder="R1, R3… + contrôles C1… (on reliera automatiquement ensuite)"></textarea>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Documents applicables</label>
-                                <textarea class="form-control" id="procDocs" rows="2" placeholder="Procédure mails v1.0, charte SI, RGPD…"></textarea>
-                            </div>
-
-                            <div class="col-12 d-flex gap-2 mt-2">
-                                <button class="btn btn-outline-secondary" id="btnViewProcedures">Voir procédures</button>
-
-                                <button class="btn btn-primary" id="btnSaveProcess">Enregistrer</button>
-                                <button class="btn btn-outline-danger" id="btnDeleteProcess">Supprimer</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card shadow-soft p-3 ">
-                        <h6 class="mb-2">Risques du processus</h6>
-                        <div id="processRiskTable"></div>
-                    </div>
-
-                </div>
-            </div>
-
-        </div>
-        <div class="tab-pane fade" id="tab-procedures">
-            <div class="row g-3">
-                <!-- Gauche: sélection Processus + liste Procédures -->
-                <div class="col-12 col-xl-4">
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <h5 class="mb-0">Procédures</h5>
-                            <span class="pill">Processus <span class="mono" id="proc2ProcessBadge">—</span></span>
-                        </div>
-
-                        <div class="mt-2">
-                            <label class="form-label mb-1">Processus</label>
-                            <select class="form-select form-select-sm" id="proc2ProcessSelect"></select>
-                        </div>
-
-                        <input class="form-control form-control-sm mt-2" id="proc2Search" placeholder="Rechercher procédure…">
-
-                        <div class="risk-list mt-2" id="proc2List" style="max-height:520px;"></div>
-
-                        <div class="d-flex gap-2 mt-2">
-                            <button class="btn btn-sm btn-primary" id="btnNewProcedure">Nouvelle</button>
-                            <button class="btn btn-sm btn-outline-secondary" id="btnClearProcedure">Vider</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Droite: fiche procédure + logigramme -->
-                <div class="col-12 col-xl-8">
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                            <h5 class="mb-0">Logigramme – Qui ? / Fait quoi ? / Comment ?</h5>
-                            <span class="pill">Procédure <span class="mono" id="proc2Badge">—</span></span>
-                        </div>
-
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-4">
-                                <label class="form-label required">ID</label>
-                                <input class="form-control" id="proc2Id" placeholder="PROC-MAILS">
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label required">Nom</label>
-                                <input class="form-control" id="proc2Name" placeholder="Procédure de gestion des mails">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Version</label>
-                                <input class="form-control" id="proc2Version" placeholder="1.0">
-                            </div>
-
-                            <div class="col-12 d-flex gap-2 mt-1">
-                                <button class="btn btn-outline-secondary d-none" id="btnBackToProcedure">
-                                    ← Retour à la procédure
-                                </button>
-
-                                <button class="btn btn-primary" id="btnSaveProcedure">Enregistrer</button>
-                                <button class="btn btn-outline-danger" id="btnDeleteProcedure">Supprimer</button>
-                                <button class="btn btn-outline-secondary ms-auto" id="btnAddStep">+ Étape</button>
-                            </div>
-                        </div>
-
-                        <hr class="my-3">
-
-                        <!-- Editeur simple des étapes -->
-                        <div id="proc2StepsEditor" class="mb-3"></div>
-
-                        <!-- Logigramme 3 colonnes -->
-                        <div class="border rounded-4 bg-white p-2">
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0" id="proc2FlowTable">
+                                <table class="table table-sm align-middle mb-0">
                                     <thead>
                                         <tr>
-                                            <th style="width:22%;">Qui ?</th>
-                                            <th style="width:40%;">Fait quoi ?</th>
-                                            <th style="width:38%;">Comment ?</th>
+                                            <th>Code</th>
+                                            <th>Type</th>
+                                            <th>Nom</th>
+                                            <th>Responsable</th>
+                                            <th class="nowrap">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="proc2FlowBody"></tbody>
+                                    <tbody id="mpTbody"></tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="small text-muted mt-2">
-                            Les risques (R…) affichés sur les étapes sont cliquables : ouverture de la fiche Risque.
-                        </div>
                     </div>
                 </div>
+
             </div>
+            <div class="tab-pane fade" id="tab-processus">
+                <div class="row g-3">
+                    <!-- Colonne gauche : liste des processus du macroprocessus sélectionné -->
+                    <div class="col-12 col-xl-4">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h5 class="mb-0">Processus</h5>
+                                <span class="pill">MP <span class="mono" id="procMpBadge">—</span></span>
+                            </div>
 
-        </div>
-        <div class="tab-pane fade" id="tab-risques">
-            <div class="row g-3">
-                <!-- Form -->
-                <div class="col-12 col-xl-4">
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <h2 class="h5 mb-0">Fiche risque</h2>
-                            <span class="pill">Score <span class="mono" id="scoreNow">9</span> · Niveau <span class="mono" id="levelNow">Significatif</span></span>
-                        </div>
+                            <div class="small text-muted mt-1">
+                                Double-clic sur un macroprocessus = ouverture ici + filtrage automatique.
+                            </div>
 
-                        <div class="alert alert-light border py-2 mb-3">
-                            <div class="d-flex flex-wrap gap-3 align-items-center">
-                                <div><span class="legend-dot dot-blue me-1"></span> Initial</div>
-                                <div><span class="legend-dot dot-green me-1"></span> Résiduel (si contrôle effectif)</div>
-                                <div class="small-muted">Cliquez une bulle ou un risque dans la liste pour charger la fiche.</div>
+                            <div class="mt-2">
+                                <label class="form-label mb-1">Macroprocessus</label>
+                                <select class="form-select form-select-sm" id="procMpSelect"></select>
+                            </div>
+
+                            <input class="form-control form-control-sm mt-2" id="procSearch" placeholder="Rechercher (code, nom)…">
+
+                            <div class="risk-list mt-2" id="procList" style="max-height:520px;"></div>
+
+                            <div class="d-flex gap-2 mt-2">
+                                <button class="btn btn-sm btn-primary" id="btnNewProcess">Nouveau</button>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnClearProcess">Vider</button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="row g-2">
-                            <div class="col-4">
-                                <label class="form-label required">Code</label>
-                                <input class="form-control" id="code" placeholder="R1">
-                            </div>
-                            <div class="col-8">
-                                <label class="form-label required">Domaine</label>
-                                <select class="form-select" id="domain">
-                                    <option>Classement</option>
-                                    <option>Conservation</option>
-                                    <option>RGPD</option>
-                                    <option>Vie scolaire</option>
-                                    <option>RH</option>
-                                    <option>Continuité</option>
-                                    <option>Audit</option>
-                                    <option>Sécurité</option>
-                                    <option>Organisation</option>
-                                    <option>Juridique</option>
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label required">Intitulé du risque</label>
-                                <input class="form-control" id="title" placeholder="Non-classement des courriels engageants">
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Étape de procédure concernée</label>
-                                <select class="form-select" id="step">
-                                    <option>Réception</option>
-                                    <option>Nécessité d’action / réponse</option>
-                                    <option>Attente</option>
-                                    <option>Traitement</option>
-                                    <option>Pièces jointes</option>
-                                    <option>Qualification administrative</option>
-                                    <option selected>Classement J+30</option>
-                                    <option>Archivage annuel</option>
-                                    <option>Transitoires</option>
-                                    <option>Données sensibles</option>
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label required">Processus porteur du risque</label>
-                                <select class="form-select" id="riskProcess">
-                                    <option value="">— Sélectionner —</option>
-                                </select>
-                                <div class="form-text">Le risque est rattaché à un processus ISO (ex : MPM01-001).</div>
+                    <!-- Colonne droite : fiche ISO du processus -->
+                    <div class="col-12 col-xl-8">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <h5 class="mb-0">Fiche processus</h5>
+                                <span class="pill">Risques <span class="mono" id="procRiskCount">0</span></span>
+                                <span class="pill">Code <span class="mono" id="procCodeBadge">—</span></span>
                             </div>
 
 
-                            <div class="col-6">
-                                <label class="form-label required">Probabilité P (1–5)</label>
-                                <input class="form-control" type="number" min="1" max="5" id="p" value="3">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label required">Impact I (1–5)</label>
-                                <input class="form-control" type="number" min="1" max="5" id="i" value="3">
-                            </div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-md-4">
+                                    <label class="form-label required">Code</label>
+                                    <input class="form-control" id="procId" placeholder="MPP01-001">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label required">Nom du processus</label>
+                                    <input class="form-control" id="procName" placeholder="Gestion des risques mails">
+                                </div>
 
-                            <div class="col-12">
-                                <label class="form-label">Justification (inspection / contexte)</label>
-                                <textarea class="form-control" id="justif" rows="3" placeholder="Facteur humain, perte de preuve, non-conformité RGPD…"></textarea>
-                            </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Pilote</label>
+                                    <input class="form-control" id="procPilot" placeholder="SGE">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Finalité / Objectif</label>
+                                    <input class="form-control" id="procPurpose" placeholder="Maîtriser les risques de la procédure mails">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Périmètre</label>
+                                    <input class="form-control" id="procScope" placeholder="EPLE – secrétariat / gestion / SRH…">
+                                </div>
 
-                            <hr class="my-2">
+                                <div class="col-12">
+                                    <label class="form-label">Entrées (inputs)</label>
+                                    <textarea class="form-control" id="procInputs" rows="2" placeholder="Courriels entrants, demandes usagers, pièces jointes…"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Sorties (outputs)</label>
+                                    <textarea class="form-control" id="procOutputs" rows="2" placeholder="Courriels classés, décisions tracées, preuves auditables…"></textarea>
+                                </div>
 
-                            <div class="col-12">
-                                <h3 class="h6 mb-2">Mesure de contrôle (effet attendu)</h3>
-                                <div class="small-muted mb-2">ΔP et ΔI s’appliquent uniquement si “Mise en œuvre = Oui”.</div>
-                            </div>
+                                <div class="col-12">
+                                    <label class="form-label">Ressources / moyens</label>
+                                    <textarea class="form-control" id="procResources" rows="2" placeholder="Outlook, arborescence partagée, droits, formations…"></textarea>
+                                </div>
 
-                            <div class="col-12">
-                                <label class="form-label">Libellé de la mesure</label>
-                                <input class="form-control" id="controlName" placeholder="Revue mensuelle du classement à J+30 + rappel automatique">
-                            </div>
+                                <div class="col-12">
+                                    <label class="form-label">Interactions (amont / aval)</label>
+                                    <textarea class="form-control" id="procInteractions" rows="2" placeholder="Amont: direction / enseignants… Aval: compta, RH, vie scolaire…"></textarea>
+                                </div>
 
-                            <div class="col-6">
-                                <label class="form-label">ΔP (−4 à 0)</label>
-                                <input class="form-control" type="number" min="-4" max="0" id="dP" value="-1">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">ΔI (−4 à 0)</label>
-                                <input class="form-control" type="number" min="-4" max="0" id="dI" value="0">
-                            </div>
+                                <div class="col-12">
+                                    <label class="form-label">Indicateurs / KPI</label>
+                                    <textarea class="form-control" id="procKpi" rows="2" placeholder="% mails classés < 30j, nb écarts inspection, délai réponse…"></textarea>
+                                </div>
 
-                            <div class="col-12">
-                                <label class="form-label">Mise en œuvre</label>
-                                <select class="form-select" id="controlImplemented">
-                                    <option value="no" selected>Non (prévisionnel)</option>
-                                    <option value="yes">Oui (effectif)</option>
-                                </select>
-                            </div>
+                                <div class="col-12">
+                                    <label class="form-label">Risques & maîtrises (liens)</label>
+                                    <textarea class="form-control" id="procRisks" rows="2" placeholder="R1, R3… + contrôles C1… (on reliera automatiquement ensuite)"></textarea>
+                                </div>
 
-                            <div class="col-12 d-flex gap-2 mt-2">
-                                <button class="btn btn-primary" id="btnSave">Enregistrer</button>
-                                <button class="btn btn-outline-secondary" id="btnClear">Vider</button>
-                            </div>
+                                <div class="col-12">
+                                    <label class="form-label">Documents applicables</label>
+                                    <textarea class="form-control" id="procDocs" rows="2" placeholder="Procédure mails v1.0, charte SI, RGPD…"></textarea>
+                                </div>
 
+                                <div class="col-12 d-flex gap-2 mt-2">
+                                    <button class="btn btn-outline-secondary" id="btnViewProcedures">Voir procédures</button>
+
+                                    <button class="btn btn-primary" id="btnSaveProcess">Enregistrer</button>
+                                    <button class="btn btn-outline-danger" id="btnDeleteProcess">Supprimer</button>
+                                </div>
+                            </div>
                         </div>
+                        <div class="card shadow-soft p-3 ">
+                            <h6 class="mb-2">Risques du processus</h6>
+                            <div id="processRiskTable"></div>
+                        </div>
+
                     </div>
                 </div>
 
-                <!-- Matrix + filter list -->
-                <div class="col-12 col-xl-8">
+            </div>
+            <div class="tab-pane fade" id="tab-procedures">
+                <div class="row g-3">
+                    <!-- Gauche: sélection Processus + liste Procédures -->
+                    <div class="col-12 col-xl-4">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h5 class="mb-0">Procédures</h5>
+                                <span class="pill">Processus <span class="mono" id="proc2ProcessBadge">—</span></span>
+                            </div>
 
-                    <div class="card shadow-soft p-3">
-                        <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
-                            <h2 class="h5 mb-0">Matrice des risques (P × I)</h2>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <span class="pill">Nb risques <span class="mono" id="countRisks">0</span></span>
-                                <span class="pill">Critiques <span class="mono" id="countCrit">0</span></span>
-                                <span class="pill">Élevés <span class="mono" id="countHigh">0</span></span>
-                                <span class="pill">Affichés <span class="mono" id="countShown">0</span></span>
+                            <div class="mt-2">
+                                <label class="form-label mb-1">Processus</label>
+                                <select class="form-select form-select-sm" id="proc2ProcessSelect"></select>
+                            </div>
+
+                            <input class="form-control form-control-sm mt-2" id="proc2Search" placeholder="Rechercher procédure…">
+
+                            <div class="risk-list mt-2" id="proc2List" style="max-height:520px;"></div>
+
+                            <div class="d-flex gap-2 mt-2">
+                                <button class="btn btn-sm btn-primary" id="btnNewProcedure">Nouvelle</button>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnClearProcedure">Vider</button>
                             </div>
                         </div>
-                        <div class="row g-2 align-items-end mb-2">
-                            <div class="col-md-4">
-                                <label class="form-label mb-1">Filtrer par processus</label>
-                                <select class="form-select form-select-sm" id="matrixFilterProcess">
-                                    <option value="">— Tous les processus —</option>
-                                </select>
+                    </div>
+
+                    <!-- Droite: fiche procédure + logigramme -->
+                    <div class="col-12 col-xl-8">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <h5 class="mb-0">Logigramme – Qui ? / Fait quoi ? / Comment ?</h5>
+                                <span class="pill">Procédure <span class="mono" id="proc2Badge">—</span></span>
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label mb-1">Filtrer par procédure</label>
-                                <select class="form-select form-select-sm" id="matrixFilterProcedure">
-                                    <option value="">— Toutes les procédures —</option>
-                                </select>
-                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-4">
+                                    <label class="form-label required">ID</label>
+                                    <input class="form-control" id="proc2Id" placeholder="PROC-MAILS">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label required">Nom</label>
+                                    <input class="form-control" id="proc2Name" placeholder="Procédure de gestion des mails">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Version</label>
+                                    <input class="form-control" id="proc2Version" placeholder="1.0">
+                                </div>
 
-                            <div class="col-md-4 d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-secondary" id="btnClearMatrixFilters">
-                                    Réinitialiser
-                                </button>
-                            </div>
-                        </div>
+                                <div class="col-12 d-flex gap-2 mt-1">
+                                    <button class="btn btn-outline-secondary d-none" id="btnBackToProcedure">
+                                        ← Retour à la procédure
+                                    </button>
 
-                        <div class="matrix-area">
-                            <div class="matrix-wrap">
-                                <div class="matrix" id="matrix"></div>
-                                <div class="small-muted mt-2">
-                                    Cliquez une bulle pour charger la fiche. Les risques affichés sont ceux cochés dans la liste à droite.
+                                    <button class="btn btn-primary" id="btnSaveProcedure">Enregistrer</button>
+                                    <button class="btn btn-outline-danger" id="btnDeleteProcedure">Supprimer</button>
+                                    <button class="btn btn-outline-secondary ms-auto" id="btnAddStep">+ Étape</button>
                                 </div>
                             </div>
 
-                            <div>
-                                <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <div class="fw-semibold">Filtre d’affichage</div>
-                                    <div class="btn-group btn-group-sm" role="group" aria-label="filter buttons">
-                                        <button class="btn btn-outline-secondary" id="btnAll">Tout</button>
-                                        <button class="btn btn-outline-secondary" id="btnNone">Aucun</button>
+                            <hr class="my-3">
+
+                            <!-- Editeur simple des étapes -->
+                            <div id="proc2StepsEditor" class="mb-3"></div>
+
+                            <!-- Logigramme 3 colonnes -->
+                            <div class="border rounded-4 bg-white p-2">
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0" id="proc2FlowTable">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:22%;">Qui ?</th>
+                                                <th style="width:40%;">Fait quoi ?</th>
+                                                <th style="width:38%;">Comment ?</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="proc2FlowBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="small text-muted mt-2">
+                                Les risques (R…) affichés sur les étapes sont cliquables : ouverture de la fiche Risque.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="tab-pane fade" id="tab-risques">
+                <div class="row g-3">
+                    <!-- Form -->
+                    <div class="col-12 col-xl-4">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h2 class="h5 mb-0">Fiche risque</h2>
+                                <span class="pill">Score <span class="mono" id="scoreNow">9</span> · Niveau <span class="mono" id="levelNow">Significatif</span></span>
+                            </div>
+
+                            <div class="alert alert-light border py-2 mb-3">
+                                <div class="d-flex flex-wrap gap-3 align-items-center">
+                                    <div><span class="legend-dot dot-blue me-1"></span> Initial</div>
+                                    <div><span class="legend-dot dot-green me-1"></span> Résiduel (si contrôle effectif)</div>
+                                    <div class="small-muted">Cliquez une bulle ou un risque dans la liste pour charger la fiche.</div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <label class="form-label required">Code</label>
+                                    <input class="form-control" id="code" placeholder="R1">
+                                </div>
+                                <div class="col-8">
+                                    <label class="form-label required">Domaine</label>
+                                    <select class="form-select" id="domain">
+                                        <option>Classement</option>
+                                        <option>Conservation</option>
+                                        <option>RGPD</option>
+                                        <option>Vie scolaire</option>
+                                        <option>RH</option>
+                                        <option>Continuité</option>
+                                        <option>Audit</option>
+                                        <option>Sécurité</option>
+                                        <option>Organisation</option>
+                                        <option>Juridique</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label required">Intitulé du risque</label>
+                                    <input class="form-control" id="title" placeholder="Non-classement des courriels engageants">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Étape de procédure concernée</label>
+                                    <select class="form-select" id="step">
+                                        <option>Réception</option>
+                                        <option>Nécessité d’action / réponse</option>
+                                        <option>Attente</option>
+                                        <option>Traitement</option>
+                                        <option>Pièces jointes</option>
+                                        <option>Qualification administrative</option>
+                                        <option selected>Classement J+30</option>
+                                        <option>Archivage annuel</option>
+                                        <option>Transitoires</option>
+                                        <option>Données sensibles</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label required">Processus porteur du risque</label>
+                                    <select class="form-select" id="riskProcess">
+                                        <option value="">— Sélectionner —</option>
+                                    </select>
+                                    <div class="form-text">Le risque est rattaché à un processus ISO (ex : MPM01-001).</div>
+                                </div>
+
+
+                                <div class="col-6">
+                                    <label class="form-label required">Probabilité P (1–5)</label>
+                                    <input class="form-control" type="number" min="1" max="5" id="p" value="3">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label required">Impact I (1–5)</label>
+                                    <input class="form-control" type="number" min="1" max="5" id="i" value="3">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Justification (inspection / contexte)</label>
+                                    <textarea class="form-control" id="justif" rows="3" placeholder="Facteur humain, perte de preuve, non-conformité RGPD…"></textarea>
+                                </div>
+
+                                <hr class="my-2">
+
+                                <div class="col-12">
+                                    <h3 class="h6 mb-2">Mesure de contrôle (effet attendu)</h3>
+                                    <div class="small-muted mb-2">ΔP et ΔI s’appliquent uniquement si “Mise en œuvre = Oui”.</div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Libellé de la mesure</label>
+                                    <input class="form-control" id="controlName" placeholder="Revue mensuelle du classement à J+30 + rappel automatique">
+                                </div>
+
+                                <div class="col-6">
+                                    <label class="form-label">ΔP (−4 à 0)</label>
+                                    <input class="form-control" type="number" min="-4" max="0" id="dP" value="-1">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">ΔI (−4 à 0)</label>
+                                    <input class="form-control" type="number" min="-4" max="0" id="dI" value="0">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Mise en œuvre</label>
+                                    <select class="form-select" id="controlImplemented">
+                                        <option value="no" selected>Non (prévisionnel)</option>
+                                        <option value="yes">Oui (effectif)</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12 d-flex gap-2 mt-2">
+                                    <button class="btn btn-primary" id="btnSave">Enregistrer</button>
+                                    <button class="btn btn-outline-secondary" id="btnClear">Vider</button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Matrix + filter list -->
+                    <div class="col-12 col-xl-8">
+
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+                                <h2 class="h5 mb-0">Matrice des risques (P × I)</h2>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <span class="pill">Nb risques <span class="mono" id="countRisks">0</span></span>
+                                    <span class="pill">Critiques <span class="mono" id="countCrit">0</span></span>
+                                    <span class="pill">Élevés <span class="mono" id="countHigh">0</span></span>
+                                    <span class="pill">Affichés <span class="mono" id="countShown">0</span></span>
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-end mb-2">
+                                <div class="col-md-4">
+                                    <label class="form-label mb-1">Filtrer par processus</label>
+                                    <select class="form-select form-select-sm" id="matrixFilterProcess">
+                                        <option value="">— Tous les processus —</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label mb-1">Filtrer par procédure</label>
+                                    <select class="form-select form-select-sm" id="matrixFilterProcedure">
+                                        <option value="">— Toutes les procédures —</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary" id="btnClearMatrixFilters">
+                                        Réinitialiser
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="matrix-area">
+                                <div class="matrix-wrap">
+                                    <div id="riskMatrixWrap">
+                                        <svg id="matrixOverlay"></svg>
+                                        <div class="matrix" id="matrix"></div>
+                                    </div>
+                                    <div class="small-muted mt-2">
+                                        Cliquez une bulle pour charger la fiche. Les risques affichés sont ceux cochés dans la liste à droite.
                                     </div>
                                 </div>
 
-                                <input class="form-control form-control-sm mb-2" id="filterSearch" placeholder="Rechercher dans la liste…">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div class="fw-semibold">Filtre d’affichage</div>
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="filter buttons">
+                                            <button class="btn btn-outline-secondary" id="btnAll">Tout</button>
+                                            <button class="btn btn-outline-secondary" id="btnNone">Aucun</button>
+                                        </div>
+                                    </div>
 
-                                <div class="risk-list" id="riskList"></div>
+                                    <input class="form-control form-control-sm mb-2" id="filterSearch" placeholder="Rechercher dans la liste…">
 
-                                <div class="small-muted mt-2">
-                                    Coche = visible sur matrice. Clic sur le libellé = ouvrir la fiche à gauche.
+                                    <div class="risk-list" id="riskList"></div>
+
+                                    <div class="small-muted mt-2">
+                                        Coche = visible sur matrice. Clic sur le libellé = ouvrir la fiche à gauche.
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Register -->
-                    <div class="card shadow-soft p-3 mt-3">
-                        <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
-                            <h2 class="h5 mb-0">Registre</h2>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <input class="form-control" style="max-width:340px;" id="search" placeholder="Rechercher (code, domaine, texte)…">
-                                <select class="form-select" style="max-width:220px;" id="filterLevel">
-                                    <option value="">Tous niveaux</option>
-                                    <option>Critique</option>
-                                    <option>Élevé</option>
-                                    <option>Significatif</option>
-                                    <option>Modéré</option>
-                                    <option>Faible</option>
-                                </select>
+                        <!-- Register -->
+                        <div class="card shadow-soft p-3 mt-3">
+                            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
+                                <h2 class="h5 mb-0">Registre</h2>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <input class="form-control" style="max-width:340px;" id="search" placeholder="Rechercher (code, domaine, texte)…">
+                                    <select class="form-select" style="max-width:220px;" id="filterLevel">
+                                        <option value="">Tous niveaux</option>
+                                        <option>Critique</option>
+                                        <option>Élevé</option>
+                                        <option>Significatif</option>
+                                        <option>Modéré</option>
+                                        <option>Faible</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Domaine</th>
+                                            <th>Risque</th>
+                                            <th class="nowrap">P×I</th>
+                                            <th>Niveau</th>
+                                            <th class="nowrap">Contrôle</th>
+                                            <th class="nowrap">Résiduel</th>
+                                            <th class="nowrap">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody"></tbody>
+                                </table>
                             </div>
                         </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Domaine</th>
-                                        <th>Risque</th>
-                                        <th class="nowrap">P×I</th>
-                                        <th>Niveau</th>
-                                        <th class="nowrap">Contrôle</th>
-                                        <th class="nowrap">Résiduel</th>
-                                        <th class="nowrap">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tbody"></tbody>
-                            </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-domains">
+                <div class="row g-3">
+                    <!-- Synthèse globale -->
+                    <div class="col-12">
+                        <div class="card shadow-soft p-3">
+                            <h5 class="mb-2">Synthèse globale – Maîtrise des domaines</h5>
+                            <div class="row g-2" id="domainSummaryCards"></div>
                         </div>
                     </div>
 
-                </div>
-            </div>
-        </div>
-
-        <div class="tab-pane fade" id="tab-domains">
-            <div class="row g-3">
-                <!-- Synthèse globale -->
-                <div class="col-12">
-                    <div class="card shadow-soft p-3">
-                        <h5 class="mb-2">Synthèse globale – Maîtrise des domaines</h5>
-                        <div class="row g-2" id="domainSummaryCards"></div>
-                    </div>
-                </div>
-
-                <!-- Tableau détaillé -->
-                <div class="col-12">
-                    <div class="card shadow-soft p-3">
-                        <h5 class="mb-2">Détail par domaine</h5>
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Domaine</th>
-                                        <th>Risques</th>
-                                        <th>Crit./Élevés</th>
-                                        <th>Maîtrisés</th>
-                                        <th>Taux</th>
-                                        <th>Niveau</th>
-                                        <th>Processus concernés</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="domainTableBody"></tbody>
-                            </table>
+                    <!-- Tableau détaillé -->
+                    <div class="col-12">
+                        <div class="card shadow-soft p-3">
+                            <h5 class="mb-2">Détail par domaine</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Domaine</th>
+                                            <th>Risques</th>
+                                            <th>Crit./Élevés</th>
+                                            <th>Maîtrisés</th>
+                                            <th>Taux</th>
+                                            <th>Niveau</th>
+                                            <th>Processus concernés</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="domainTableBody"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="tab-pane fade" id="tab-mp-domains">
-            <div class="card shadow-soft p-3">
-                <h5 class="mb-2">Vue Macroprocessus × Domaines</h5>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle text-center">
-                        <thead>
-                            <tr id="mpDomainHeader"></tr>
-                        </thead>
-                        <tbody id="mpDomainBody"></tbody>
-                    </table>
-                </div>
-                <div class="small text-muted mt-2">
-                    🟢 Maîtrisé · 🟡 À renforcer · 🔴 Faible
+            <div class="tab-pane fade" id="tab-mp-domains">
+                <div class="card shadow-soft p-3">
+                    <h5 class="mb-2">Vue Macroprocessus × Domaines</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle text-center">
+                            <thead>
+                                <tr id="mpDomainHeader"></tr>
+                            </thead>
+                            <tbody id="mpDomainBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        🟢 Maîtrisé · 🟡 À renforcer · 🔴 Faible
+                    </div>
                 </div>
             </div>
+            <footer class="mt-5 text-center small-note">
+                <span id="app-version"> Version</span>
+            </footer>
         </div>
-        <footer class="mt-5 text-center small-note">
-			<span id="app-version"> Version</span>
-        </footer>
-    </div>
   <script>
       /**
        * M@TRISK - Pilotage des risques, des processus et de la conformité
        *
-       * @version 0.0.1
+       * @version 0.0.2
        * @author Yann Bogdanovic
        * @description
        *  - M@TRISK
        * @changelog
-       *  v0.0.1
-       *    - ajout codebanque.json pour une maj des données de référence en local
-       *    - domiciliation de la banque non bloquante pour le génération du RIB en PDF
+       *  v0.0.2
+       *    - cartographie en div
+       *    - ajout fleches de mitigation
        */
-      const APP_VERSION = "M@TRISK - v0.0.1";
+      const APP_VERSION = "M@TRISK - v0.0.2";
       window.addEventListener("DOMContentLoaded", () => {
           const el = document.getElementById("app-version");
           if (el) el.textContent = APP_VERSION;
@@ -1110,131 +1149,141 @@
       }
 
       function createMpTag(mp, type, COLORS) {
-        const w = 210, h = 90;
-        const orientation = (type === "P") ? "down" : (type === "M") ? "right" : "up";
+          const w = 210,
+              h = 90;
+          const orientation = (type === "P") ? "down" : (type === "M") ? "right" : "up";
 
-        // Conteneur HTML (pour flex-wrap)
-        const wrap = document.createElement("div");
-        wrap.className = "mp-tag";
-        wrap.setAttribute("data-mp-id", mp.id);
+          // Conteneur HTML (pour flex-wrap)
+          const wrap = document.createElement("div");
+          wrap.className = "mp-tag";
+          wrap.setAttribute("data-mp-id", mp.id);
 
-        // Mini-SVG autonome
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-        svg.setAttribute("width", "210");
-        svg.setAttribute("height", "90");
-        svg.setAttribute("role", "button");
-        svg.setAttribute("tabindex", "0");
-        svg.style.cursor = "pointer";
+          // Mini-SVG autonome
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+          svg.setAttribute("width", "210");
+          svg.setAttribute("height", "90");
+          svg.setAttribute("role", "button");
+          svg.setAttribute("tabindex", "0");
+          svg.style.cursor = "pointer";
 
-        // Forme (points dans repère local)
-        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        poly.setAttribute("points", ptsToString(tagShapePoints(w/2, h/2, w, h, orientation)));
-        poly.setAttribute("fill", COLORS[type].fill);
-        poly.setAttribute("opacity", "0.92");
-        poly.setAttribute("class", "mp-shape");
+          // Forme (points dans repère local)
+          const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+          poly.setAttribute("points", ptsToString(tagShapePoints(w / 2, h / 2, w, h, orientation)));
+          poly.setAttribute("fill", COLORS[type].fill);
+          poly.setAttribute("opacity", "0.92");
+          poly.setAttribute("class", "mp-shape");
 
-        // Textes
-        const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        t1.setAttribute("x", w/2);
-        t1.setAttribute("y", 36);
-        t1.setAttribute("text-anchor", "middle");
-        t1.setAttribute("font-size", "18");
-        t1.setAttribute("font-weight", "800");
-        t1.setAttribute("fill", COLORS[type].text);
-        t1.textContent = mp.id;
+          // Textes
+          const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          t1.setAttribute("x", w / 2);
+          t1.setAttribute("y", 36);
+          t1.setAttribute("text-anchor", "middle");
+          t1.setAttribute("font-size", "18");
+          t1.setAttribute("font-weight", "800");
+          t1.setAttribute("fill", COLORS[type].text);
+          t1.textContent = mp.id;
 
-        const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        t2.setAttribute("x", w/2);
-        t2.setAttribute("y", 60);
-        t2.setAttribute("text-anchor", "middle");
-        t2.setAttribute("font-size", "13");
-        t2.setAttribute("font-weight", "600");
-        t2.setAttribute("fill", COLORS[type].text);
+          const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          t2.setAttribute("x", w / 2);
+          t2.setAttribute("y", 60);
+          t2.setAttribute("text-anchor", "middle");
+          t2.setAttribute("font-size", "13");
+          t2.setAttribute("font-weight", "600");
+          t2.setAttribute("fill", COLORS[type].text);
 
-        const name = (mp.name || "").trim();
-        t2.textContent = name.length > 26 ? name.slice(0, 25) + "…" : name;
+          const name = (mp.name || "").trim();
+          t2.textContent = name.length > 26 ? name.slice(0, 25) + "…" : name;
 
-        // Events (sur le svg : plus simple)
-        svg.addEventListener("click", () => {
-            if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
-        });
+          // Events (sur le svg : plus simple)
+          svg.addEventListener("click", () => {
+              if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
+          });
 
-        svg.addEventListener("dblclick", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof openProcessTabForMacroprocess === "function") openProcessTabForMacroprocess(mp.id);
-        });
+          svg.addEventListener("dblclick", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof openProcessTabForMacroprocess === "function") openProcessTabForMacroprocess(mp.id);
+          });
 
-        // Accessibilité (Enter / Space)
-        svg.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
-            }
-        });
+          // Accessibilité (Enter / Space)
+          svg.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
+              }
+          });
 
-        svg.appendChild(poly);
-        svg.appendChild(t1);
-        svg.appendChild(t2);
-        wrap.appendChild(svg);
-        return wrap;
+          svg.appendChild(poly);
+          svg.appendChild(t1);
+          svg.appendChild(t2);
+          wrap.appendChild(svg);
+          return wrap;
       }
 
       function captureElementOffscreen(el, widthPx = 1100) {
-        if (!el) return null;
+          if (!el) return null;
 
-        const clone = el.cloneNode(true);
-        const holder = document.createElement("div");
-        holder.style.position = "fixed";
-        holder.style.left = "-10000px";
-        holder.style.top = "0";
-        holder.style.width = widthPx + "px";
-        holder.style.background = "#fff";
-        holder.style.padding = "12px";
-        holder.style.zIndex = "999999";
-        holder.appendChild(clone);
-        document.body.appendChild(holder);
+          const clone = el.cloneNode(true);
+          const holder = document.createElement("div");
+          holder.style.position = "fixed";
+          holder.style.left = "-10000px";
+          holder.style.top = "0";
+          holder.style.width = widthPx + "px";
+          holder.style.background = "#fff";
+          holder.style.padding = "12px";
+          holder.style.zIndex = "999999";
+          holder.appendChild(clone);
+          document.body.appendChild(holder);
 
-        new Promise(r => setTimeout(r, 50));
+          new Promise(r => setTimeout(r, 50));
 
-        const canvas = html2canvas(clone, {
-            backgroundColor: "#ffffff",
-            scale: 2,
-            useCORS: true
-        });
+          const canvas = html2canvas(clone, {
+              backgroundColor: "#ffffff",
+              scale: 2,
+              useCORS: true
+          });
 
-        document.body.removeChild(holder);
+          document.body.removeChild(holder);
 
-        // ✅ ICI on retourne la dataURL
-        return canvas.toDataURL("image/png");//.toDataURL("image/png");
+          // ✅ ICI on retourne la dataURL
+          return canvas.toDataURL("image/png");
       }
 
       function renderMacroprocessMap() {
-        const zoneP = $("mpZoneP");
-        const zoneM = $("mpZoneM");
-        const zoneS = $("mpZoneS");
-        if (!zoneP || !zoneM || !zoneS) return;
+          const zoneP = $("mpZoneP");
+          const zoneM = $("mpZoneM");
+          const zoneS = $("mpZoneS");
+          if (!zoneP || !zoneM || !zoneS) return;
 
-        zoneP.innerHTML = "";
-        zoneM.innerHTML = "";
-        zoneS.innerHTML = "";
+          zoneP.innerHTML = "";
+          zoneM.innerHTML = "";
+          zoneS.innerHTML = "";
 
-        const all = (state.macroprocesses || []);
-        const pilotage = all.filter(x => x.type === "P");
-        const metier   = all.filter(x => x.type === "M");
-        const support  = all.filter(x => x.type === "S");
+          const all = (state.macroprocesses || []);
+          const pilotage = all.filter(x => x.type === "P");
+          const metier = all.filter(x => x.type === "M");
+          const support = all.filter(x => x.type === "S");
 
-        const COLORS = {
-            P: { fill: "#0d6efd", text: "#ffffff" },
-            M: { fill: "#198754", text: "#ffffff" },
-            S: { fill: "#fd7e14", text: "#1f2937" }
-        };
+          const COLORS = {
+              P: {
+                  fill: "#0d6efd",
+                  text: "#ffffff"
+              },
+              M: {
+                  fill: "#198754",
+                  text: "#ffffff"
+              },
+              S: {
+                  fill: "#fd7e14",
+                  text: "#1f2937"
+              }
+          };
 
-        // Append tags (flow layout géré par CSS flex-wrap)
-        pilotage.forEach(mp => zoneP.appendChild(createMpTag(mp, "P", COLORS)));
-        metier.forEach(mp   => zoneM.appendChild(createMpTag(mp, "M", COLORS)));
-        support.forEach(mp  => zoneS.appendChild(createMpTag(mp, "S", COLORS)));
+          // Append tags (flow layout géré par CSS flex-wrap)
+          pilotage.forEach(mp => zoneP.appendChild(createMpTag(mp, "P", COLORS)));
+          metier.forEach(mp => zoneM.appendChild(createMpTag(mp, "M", COLORS)));
+          support.forEach(mp => zoneS.appendChild(createMpTag(mp, "S", COLORS)));
       }
 
       function openProcessTabForMacroprocess(mpId) {
@@ -1871,31 +1920,30 @@
 
       // Matrice
       const LEVELS = [{
-              min: 20,
-              max: 25,
-              label: "Critique"
-          },
-          {
-              min: 15,
-              max: 19,
-              label: "Élevé"
-          },
-          {
-              min: 8,
-              max: 14,
-              label: "Significatif"
-          },
-          {
-              min: 4,
-              max: 7,
-              label: "Modéré"
-          },
-          {
-              min: 1,
-              max: 3,
-              label: "Faible"
-          }
-      ];
+          min: 20,
+          max: 25,
+          label: "Critique"
+      },
+      {
+          min: 15,
+          max: 19,
+          label: "Élevé"
+      },
+      {
+          min: 8,
+          max: 14,
+          label: "Significatif"
+      },
+      {
+          min: 4,
+          max: 7,
+          label: "Modéré"
+      },
+      {
+          min: 1,
+          max: 3,
+          label: "Faible"
+      }];
 
       const IMPACT_LABELS = ["Très faible", "Faible", "Moyenne", "Élevée", "Très élevée"]; // I=1..5
       const PROBA_LABELS = ["Très faible", "Faible", "Moyenne", "Élevée", "Très élevée"]; // P=1..5
@@ -1935,176 +1983,175 @@
 
       function seedRisks() {
           return [{
-                  id: "R1",
-                  domain: "Classement",
-                  title: "Non-classement des courriels engageants",
-                  step: "Classement J+30",
-                  p: 5,
-                  i: 4,
-                  processId: "MPM01-001",
-                  justification: "Risque fréquent (facteur humain), perte de preuve administrative",
-                  control: {
-                      name: "Revue mensuelle + rappel J+21",
-                      dP: -1,
-                      dI: 0,
-                      implemented: true
-                  },
-                  visible: true
+              id: "R1",
+              domain: "Classement",
+              title: "Non-classement des courriels engageants",
+              step: "Classement J+30",
+              p: 5,
+              i: 4,
+              processId: "MPM01-001",
+              justification: "Risque fréquent (facteur humain), perte de preuve administrative",
+              control: {
+                  name: "Revue mensuelle + rappel J+21",
+                  dP: -1,
+                  dI: 0,
+                  implemented: true
               },
-              {
-                  id: "R2",
-                  domain: "Conservation",
-                  title: "Suppression prématurée d’un courriel probant",
-                  step: "Transitoires",
-                  p: 3,
-                  i: 5,
-                  processId: "MPM01-001",
-                  justification: "Suppression possible, impact juridique majeur",
-                  control: {
-                      name: "Règle de conservation + check trimestriel",
-                      dP: -1,
-                      dI: 0,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R2",
+              domain: "Conservation",
+              title: "Suppression prématurée d’un courriel probant",
+              step: "Transitoires",
+              p: 3,
+              i: 5,
+              processId: "MPM01-001",
+              justification: "Suppression possible, impact juridique majeur",
+              control: {
+                  name: "Règle de conservation + check trimestriel",
+                  dP: -1,
+                  dI: 0,
+                  implemented: false
               },
-              {
-                  id: "R3",
-                  domain: "RGPD",
-                  title: "Conservation excessive de données personnelles",
-                  step: "Archivage annuel",
-                  p: 4,
-                  i: 4,
-                  processId: "MPM01-001",
-                  justification: "Pratique courante, non-conformité RGPD",
-                  control: {
-                      name: "Purge annuelle + registre durées",
-                      dP: -1,
-                      dI: -1,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R3",
+              domain: "RGPD",
+              title: "Conservation excessive de données personnelles",
+              step: "Archivage annuel",
+              p: 4,
+              i: 4,
+              processId: "MPM01-001",
+              justification: "Pratique courante, non-conformité RGPD",
+              control: {
+                  name: "Purge annuelle + registre durées",
+                  dP: -1,
+                  dI: -1,
+                  implemented: false
               },
-              {
-                  id: "R4",
-                  domain: "Vie scolaire",
-                  title: "Divulgation de données sensibles élèves",
-                  step: "Données sensibles",
-                  p: 3,
-                  i: 5,
-                  processId: "MPM01-001",
-                  justification: "Données mineurs, impact RGPD maximal",
-                  control: {
-                      name: "Accès restreint + sensibilisation + chiffrement PJ",
-                      dP: -1,
-                      dI: -1,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R4",
+              domain: "Vie scolaire",
+              title: "Divulgation de données sensibles élèves",
+              step: "Données sensibles",
+              p: 3,
+              i: 5,
+              processId: "MPM01-001",
+              justification: "Données mineurs, impact RGPD maximal",
+              control: {
+                  name: "Accès restreint + sensibilisation + chiffrement PJ",
+                  dP: -1,
+                  dI: -1,
+                  implemented: false
               },
-              {
-                  id: "R5",
-                  domain: "RH",
-                  title: "Accès non autorisé à des données RH",
-                  step: "Données sensibles",
-                  p: 3,
-                  i: 5,
-                  processId: "MPM01-001",
-                  justification: "Données sensibles agents, responsabilité CE",
-                  control: {
-                      name: "Dossiers RH séparés + droits + revue accès",
-                      dP: -1,
-                      dI: -1,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R5",
+              domain: "RH",
+              title: "Accès non autorisé à des données RH",
+              step: "Données sensibles",
+              p: 3,
+              i: 5,
+              processId: "MPM01-001",
+              justification: "Données sensibles agents, responsabilité CE",
+              control: {
+                  name: "Dossiers RH séparés + droits + revue accès",
+                  dP: -1,
+                  dI: -1,
+                  implemented: false
               },
-              {
-                  id: "R6",
-                  domain: "Continuité",
-                  title: "Perte d’informations lors d’un changement d’agent",
-                  step: "Traitement",
-                  p: 3,
-                  i: 4,
-                  processId: "MPM01-001",
-                  justification: "Dépendance à l’agent, désorganisation",
-                  control: {
-                      name: "Boîte fonctionnelle + passation + procédure",
-                      dP: -1,
-                      dI: 0,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R6",
+              domain: "Continuité",
+              title: "Perte d’informations lors d’un changement d’agent",
+              step: "Traitement",
+              p: 3,
+              i: 4,
+              processId: "MPM01-001",
+              justification: "Dépendance à l’agent, désorganisation",
+              control: {
+                  name: "Boîte fonctionnelle + passation + procédure",
+                  dP: -1,
+                  dI: 0,
+                  implemented: false
               },
-              {
-                  id: "R7",
-                  domain: "Audit",
-                  title: "Impossibilité de produire une preuve",
-                  step: "Qualification administrative",
-                  p: 2,
-                  i: 5,
-                  processId: "MPM01-001",
-                  justification: "Faible fréquence, impact fort en contrôle",
-                  control: {
-                      name: "Indexation + stockage PJ en espace partagé",
-                      dP: 0,
-                      dI: -1,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R7",
+              domain: "Audit",
+              title: "Impossibilité de produire une preuve",
+              step: "Qualification administrative",
+              p: 2,
+              i: 5,
+              processId: "MPM01-001",
+              justification: "Faible fréquence, impact fort en contrôle",
+              control: {
+                  name: "Indexation + stockage PJ en espace partagé",
+                  dP: 0,
+                  dI: -1,
+                  implemented: false
               },
-              {
-                  id: "R8",
-                  domain: "Sécurité",
-                  title: "Synchronisation non maîtrisée (cloud, perso)",
-                  step: "Données sensibles",
-                  p: 2,
-                  i: 5,
-                  processId: "MPM01-001",
-                  justification: "Pratique marginale mais risque RGPD élevé",
-                  control: {
-                      name: "Blocage sync perso + charte + contrôle poste",
-                      dP: -1,
-                      dI: -1,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R8",
+              domain: "Sécurité",
+              title: "Synchronisation non maîtrisée (cloud, perso)",
+              step: "Données sensibles",
+              p: 2,
+              i: 5,
+              processId: "MPM01-001",
+              justification: "Pratique marginale mais risque RGPD élevé",
+              control: {
+                  name: "Blocage sync perso + charte + contrôle poste",
+                  dP: -1,
+                  dI: -1,
+                  implemented: false
               },
-              {
-                  id: "R9",
-                  domain: "Organisation",
-                  title: "Classement hétérogène selon les agents",
-                  step: "Classement J+30",
-                  p: 4,
-                  i: 3,
-                  processId: "MPM01-001",
-                  justification: "Pratique courante, impact organisationnel",
-                  control: {
-                      name: "Plan de classement unique + audit mensuel",
-                      dP: -1,
-                      dI: 0,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R9",
+              domain: "Organisation",
+              title: "Classement hétérogène selon les agents",
+              step: "Classement J+30",
+              p: 4,
+              i: 3,
+              processId: "MPM01-001",
+              justification: "Pratique courante, impact organisationnel",
+              control: {
+                  name: "Plan de classement unique + audit mensuel",
+                  dP: -1,
+                  dI: 0,
+                  implemented: false
               },
-              {
-                  id: "R10",
-                  domain: "Juridique",
-                  title: "Conservation d’emails informels sans valeur",
-                  step: "Archivage annuel",
-                  p: 5,
-                  i: 2,
-                  processId: "MPM01-001",
-                  justification: "Très fréquent, impact limité mais réel",
-                  control: {
-                      name: "Règles tri + modèle de rédaction",
-                      dP: -1,
-                      dI: 0,
-                      implemented: false
-                  },
-                  visible: true
+              visible: true
+          },
+          {
+              id: "R10",
+              domain: "Juridique",
+              title: "Conservation d’emails informels sans valeur",
+              step: "Archivage annuel",
+              p: 5,
+              i: 2,
+              processId: "MPM01-001",
+              justification: "Très fréquent, impact limité mais réel",
+              control: {
+                  name: "Règles tri + modèle de rédaction",
+                  dP: -1,
+                  dI: 0,
+                  implemented: false
               },
-          ];
+              visible: true
+          }, ];
       }
 
       function renderRiskProcessSelect(selectedValue = "") {
@@ -2175,6 +2222,104 @@
           state.risks = state.risks
               .map(computeRisk)
               .sort((a, b) => (b.score - a.score) || a.id.localeCompare(b.id));
+      }
+
+      function ensureMatrixOverlaySized() {
+          const wrap = document.getElementById("riskMatrixWrap");
+          const svg = document.getElementById("matrixOverlay");
+          if (!wrap || !svg) return;
+
+          const r = wrap.getBoundingClientRect();
+          svg.setAttribute("width", r.width);
+          svg.setAttribute("height", r.height);
+          svg.setAttribute("viewBox", `0 0 ${r.width} ${r.height}`);
+      }
+
+      function centerRelativeTo(el, container) {
+          const a = el.getBoundingClientRect();
+          const c = container.getBoundingClientRect();
+          return {
+              x: (a.left - c.left) + a.width / 2,
+              y: (a.top - c.top) + a.height / 2
+          };
+      }
+
+      function drawRightAngleArrow(svg, x1, y1, x2, y2) {
+          // dernier segment horizontal -> pointe orientée vers la bulle
+          const elbowX = x2;
+          const elbowY = y1;
+
+          const ns = "http://www.w3.org/2000/svg";
+          const path = document.createElementNS(ns, "path");
+          path.setAttribute("d", `M ${x2} ${y2} L ${elbowX} ${elbowY} L ${x1} ${y1}`);
+          path.setAttribute("fill", "none");
+          path.setAttribute("stroke", "rgba(13,110,253,.85)");
+          path.setAttribute("stroke-width", "2");
+          path.setAttribute("stroke-linecap", "round");
+          path.setAttribute("stroke-linejoin", "round");
+          path.setAttribute("marker-end", "url(#arrowHead)");
+          svg.appendChild(path);
+      }
+
+      function renderMitigationArrows() {
+          const wrap = document.getElementById("riskMatrixWrap");
+          const matrix = document.getElementById("matrix");
+          const svg = document.getElementById("matrixOverlay");
+          if (!wrap || !matrix || !svg) return;
+
+          // dimensionner l’overlay
+          const r = wrap.getBoundingClientRect();
+          svg.setAttribute("width", r.width);
+          svg.setAttribute("height", r.height);
+          svg.setAttribute("viewBox", `0 0 ${r.width} ${r.height}`);
+          svg.innerHTML = "";
+
+          // defs flèche
+          const ns = "http://www.w3.org/2000/svg";
+          const defs = document.createElementNS(ns, "defs");
+          defs.innerHTML = `
+		<marker id="arrowHead"
+				markerWidth="6" markerHeight="6"
+				refX="5.2" refY="3"
+				orient="auto"
+				markerUnits="strokeWidht">
+		  <path d="M 0 0 L 6 3 L 0 6 z"
+				fill="rgba(13,110,253,.85)"></path>
+		</marker>`;
+          svg.appendChild(defs);
+
+          // récupérer toutes les bulles (dans #matrix)
+          const nodes = matrix.querySelectorAll("[data-risk-id][data-point]");
+
+          // indexer par risque + type
+          const byRisk = {};
+          nodes.forEach(el => {
+              const id = String(el.dataset.riskId || "").toUpperCase();
+              const pt = String(el.dataset.point || "").toLowerCase();
+              if (!id || !pt) return;
+              byRisk[id] ??= {};
+              byRisk[id][pt] = el;
+          });
+
+          // tracer inherent -> residual
+          Object.entries(byRisk).forEach(([id, o]) => {
+              if (!o.inherent || !o.residual) return;
+
+              const p1 = centerRelativeTo(o.inherent, wrap);
+              const p2 = centerRelativeTo(o.residual, wrap);
+
+              drawRightAngleArrow(
+                  svg,
+                  p1.x + 12, p1.y,
+                  p2.x - 12, p2.y
+              );
+          });
+      }
+
+      function normalizePointType(v) {
+          v = String(v || "").toLowerCase().trim();
+          if (v === "intrinsic") return "inherent";
+          return v;
       }
 
       function loadState() {
@@ -2364,11 +2509,13 @@
       }
 
       function placeMarker(cell, kind, riskId, tooltip, same = false) {
+          isResidual = "inherent" == kind
           const d = document.createElement("div");
           d.className = `marker ${kind}` + (same ? " same" : "");
           d.title = tooltip;
           d.textContent = riskId;
           d.dataset.riskId = riskId;
+          d.dataset.point = isResidual ? "residual" : "inherent";
 
           // Click bubble => open risk in left form
           d.addEventListener("click", (ev) => {
@@ -2393,15 +2540,15 @@
 
           // Filtre par procédure
           if (fpr) {
-            const allowed = getRiskIdsForProcedure(fpr).map(normalizeRiskId);
-            const allowedSet = new Set(allowed);
+              const allowed = getRiskIdsForProcedure(fpr).map(normalizeRiskId);
+              const allowedSet = new Set(allowed);
 
-            // Si procédure sélectionnée mais 0 risques référencés => on NE filtre PAS (sinon tout disparaît)
-            if (allowedSet.size > 0) {
-                shown = shown.filter(r => allowedSet.has(normalizeRiskId(r.id)));
-            } else {
-                console.warn("[MATRIX] Procédure sélectionnée mais aucun riskId trouvé :", fpr);
-            }
+              // Si procédure sélectionnée mais 0 risques référencés => on NE filtre PAS (sinon tout disparaît)
+              if (allowedSet.size > 0) {
+                  shown = shown.filter(r => allowedSet.has(normalizeRiskId(r.id)));
+              } else {
+                  console.warn("[MATRIX] Procédure sélectionnée mais aucun riskId trouvé :", fpr);
+              }
           }
 
           $("countShown").textContent = shown.length;
@@ -2433,7 +2580,12 @@
                   placeMarker(cellRes, "residual", r.id, tooltipBase + `\nRésiduel: P=${r.pRes} I=${r.iRes} Score=${r.scoreRes} (${r.levelRes})`, false);
               }
           });
+
+          requestAnimationFrame(renderMitigationArrows);
       }
+      window.addEventListener("resize", () =>
+          requestAnimationFrame(renderMitigationArrows)
+      );
 
       function renderMatrixProcessFilter() {
           const sel = document.getElementById("matrixFilterProcess");
@@ -2466,42 +2618,42 @@
       }
 
       function normalizeRiskId(x) {
-        return String(x || "").trim().toUpperCase();
+          return String(x || "").trim().toUpperCase();
       }
 
       function getRiskIdsForProcedure(procedureId) {
-        const pr = (state.procedures || []).find(p => String(p.id) === String(procedureId));
-        if (!pr || !Array.isArray(pr.steps)) return [];
+          const pr = (state.procedures || []).find(p => String(p.id) === String(procedureId));
+          if (!pr || !Array.isArray(pr.steps)) return [];
 
-        const ids = new Set();
+          const ids = new Set();
 
-        pr.steps.forEach(s => {
-            // 1) cas normal : riskIds = ["R1","R2"]
-            if (Array.isArray(s.riskIds)) {
-            s.riskIds.forEach(rid => {
-                const n = normalizeRiskId(rid);
-                if (n) ids.add(n);
-            });
-            return;
-            }
+          pr.steps.forEach(s => {
+              // 1) cas normal : riskIds = ["R1","R2"]
+              if (Array.isArray(s.riskIds)) {
+                  s.riskIds.forEach(rid => {
+                      const n = normalizeRiskId(rid);
+                      if (n) ids.add(n);
+                  });
+                  return;
+              }
 
-            // 2) cas fréquent : riskIds = "R1,R2"
-            if (typeof s.riskIds === "string") {
-            s.riskIds.split(",").forEach(rid => {
-                const n = normalizeRiskId(rid);
-                if (n) ids.add(n);
-            });
-            return;
-            }
+              // 2) cas fréquent : riskIds = "R1,R2"
+              if (typeof s.riskIds === "string") {
+                  s.riskIds.split(",").forEach(rid => {
+                      const n = normalizeRiskId(rid);
+                      if (n) ids.add(n);
+                  });
+                  return;
+              }
 
-            // 3) cas fallback : champ unique riskId
-            if (s.riskId) {
-            const n = normalizeRiskId(s.riskId);
-            if (n) ids.add(n);
-            }
-        });
+              // 3) cas fallback : champ unique riskId
+              if (s.riskId) {
+                  const n = normalizeRiskId(s.riskId);
+                  if (n) ids.add(n);
+              }
+          });
 
-        return Array.from(ids);
+          return Array.from(ids);
       }
 
 
@@ -3158,9 +3310,9 @@
           const mpWrap = document.getElementById("mpMapWrap");
           const mpPng = captureElementOffscreen(mpWrap, 1100);
 
-          const mpHtml = mpPng
-            ? `<img src="${mpPng}" style="width:100%; max-width:680px; display:block; margin:12px auto;" />`
-            : `<p><em>Cartographie indisponible.</em></p>`;
+          const mpHtml = mpPng ?
+              `<img src="${mpPng}" style="width:100%; max-width:680px; display:block; margin:12px auto;" />` :
+              `<p><em>Cartographie indisponible.</em></p>`;
 
           wrap.innerHTML += `
             <h2>1. Cartographie des macroprocessus</h2>
@@ -3412,6 +3564,10 @@
           renderMatrix();
       });
 
+      /*	  window.addEventListener("resize", () => requestAnimationFrame(renderMitigationArrows));
+      	  $("scroll", () => requestAnimationFrame(renderMitigationArrows), true);
+      */
+
       $("btnExportPdf")?.addEventListener("click", () => {
           const el = document.getElementById("tab-domains");
 
@@ -3446,24 +3602,27 @@
       });
 
       $("matrixFilterProcedure")?.addEventListener("change", () => {
-        const fpr = document.getElementById("matrixFilterProcedure").value || "";
-        if (!fpr) { renderMatrix(); return; }
+          const fpr = document.getElementById("matrixFilterProcedure").value || "";
+          if (!fpr) {
+              renderMatrix();
+              return;
+          }
 
-        const pr = (state.procedures || []).find(p => String(p.id) === String(fpr));
-        if (pr?.processId) {
-            const selP = document.getElementById("matrixFilterProcess");
-            if (selP) selP.value = pr.processId;
-        }
+          const pr = (state.procedures || []).find(p => String(p.id) === String(fpr));
+          if (pr?.processId) {
+              const selP = document.getElementById("matrixFilterProcess");
+              if (selP) selP.value = pr.processId;
+          }
 
-        renderMatrix();
+          renderMatrix();
       });
 
       $("btnClearMatrixFilters")?.addEventListener("click", () => {
-        const p = document.getElementById("matrixFilterProcess");
-        const pr = document.getElementById("matrixFilterProcedure");
-        if (p) p.value = "";
-        if (pr) pr.value = "";
-        renderMatrix();
+          const p = document.getElementById("matrixFilterProcess");
+          const pr = document.getElementById("matrixFilterProcedure");
+          if (p) p.value = "";
+          if (pr) pr.value = "";
+          renderMatrix();
       });
 
       function openTab(tabPaneId) {
