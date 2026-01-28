@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>M@TRISK - Pilotage des risques, des processus et de la conformité</title>
     <script src="https://cdn.jsdelivr.net/npm/docx/build/index.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvg@3.0.10/lib/umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
@@ -432,7 +431,7 @@
                 <div class="small-muted">Pilotage des risques, des processus et de la conformité</div>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary" id="btnExportPdf">Export PDF</button>
+                <button class="btn btn-outline-primary d-none" id="btnExportPdf">Export PDF</button>
                 <button class="btn btn-outline-primary" id="btnExportWord">Export Word</button>
 
                 <button class="btn btn-outline-secondary" id="btnExport">Exporter JSON</button>
@@ -531,24 +530,6 @@
                                         <div class="mp-zone-items" id="mpZoneS"></div>
                                     </div>
                                 </div>
-                                <!--
-                            <svg id="mpMap" viewBox="0 0 1200 720" width="100%" height="460" role="img" aria-label="Cartographie des macroprocessus">
-                                <!-- Fond zones 
-                                <rect x="10" y="10" width="1180" height="210" rx="20" fill="#eef5ff"></rect>
-                                <rect x="10" y="255" width="1180" height="210" rx="20" fill="#f3fff0"></rect>
-                                <rect x="10" y="500" width="1180" height="210" rx="20" fill="#fff6ea"></rect>
-
-                                <!-- Titres zones 
-                                <text x="30" y="55" font-size="26" font-weight="700" fill="#0d6efd">PILOTAGE (P)</text>
-                                <text x="30" y="300" font-size="26" font-weight="700" fill="#198754">MÉTIER (M)</text>
-                                <text x="30" y="545" font-size="26" font-weight="700" fill="#fd7e14">SUPPORT (S)</text>
-
-                                <!-- Conteneurs dynamiques 
-                                <g id="mpPilotage"></g>
-                                <g id="mpMetier"></g>
-                                <g id="mpSupport"></g>
-                            </svg>
-                        -->
                             </div>
 
                         </div>
@@ -1066,37 +1047,42 @@
       /**
        * M@TRISK - Pilotage des risques, des processus et de la conformité
        *
-       * @version 0.0.2
+       * @version 0.0.3
        * @author Yann Bogdanovic
        * @description
        *  - M@TRISK
        * @changelog
-       *  v0.0.2
-       *    - cartographie en div
-       *    - ajout fleches de mitigation
+       *  v0.0.3
+       *    - factorisation
+       *    - typographie
+	   *    - fix exports pdf et word
        */
-      const APP_VERSION = "M@TRISK - v0.0.2";
+      const APP_VERSION = "M@TRISK - v0.0.3";
       window.addEventListener("DOMContentLoaded", () => {
           const el = document.getElementById("app-version");
           if (el) el.textContent = APP_VERSION;
       });
 
-      const STORAGE_KEY = "eple_mail_controleinterne_v2";
-
-      function renderMacroprocesses() {
-          const c = $("macroprocessList");
-          c.innerHTML = "";
-
-          state.macroprocesses.forEach(mp => {
-              c.innerHTML += `
-		  <div class="border rounded p-2 mb-2">
-			<div class="fw-semibold">${mp.id} – ${mp.name}</div>
-			<div class="small-muted">
-			  Type : ${mp.type} · Responsable : ${mp.owner || "—"}
-			</div>
-		  </div>`;
-          });
+      // Afficher le bouton PDF uniquement quand l'onglet "Maîtrise des domaines" est actif
+      function syncExportPdfVisibilityFromActiveTab() {
+          const btn = document.getElementById("btnExportPdf");
+          if (!btn) return;
+          const active = document.querySelector('#mainTabs .nav-link.active');
+          const target = active?.getAttribute("data-bs-target") || "";
+          btn.classList.toggle("d-none", target !== "#tab-domains");
       }
+
+      // Bootstrap déclenche shown.bs.tab quand un onglet est réellement affiché
+      document.addEventListener("DOMContentLoaded", () => {
+          syncExportPdfVisibilityFromActiveTab();
+
+          const tabRoot = document.getElementById("mainTabs");
+          tabRoot?.addEventListener("shown.bs.tab", () => {
+              syncExportPdfVisibilityFromActiveTab();
+          });
+      });
+
+      const STORAGE_KEY = "eple_mail_controleinterne_v2";
 
       function tagShapePoints(cx, cy, w, h, orientation) {
           // Forme = rectangle + triangle (5 côtés)
@@ -1108,7 +1094,7 @@
           const bot = cy + h / 2;
 
           const tri = Math.min(w, h) * 0.22; // taille de la pointe
-          const inset = Math.min(w, h) * 0.10; // léger retrait pour l'esthétique
+          //const inset = Math.min(w, h) * 0.10; // léger retrait pour l'esthétique
 
           if (orientation === "down") {
               // Rectangle + triangle bas
@@ -1221,10 +1207,14 @@
           return wrap;
       }
 
-      function captureElementOffscreen(el, widthPx = 1100) {
+      async function captureElementOffscreen(el, widthPx = 640, opts = {}) {
           if (!el) return null;
 
+          const hideSelectors = Array.isArray(opts.hideSelectors) ? opts.hideSelectors : [];
+          const extraCss = typeof opts.extraCss === "string" ? opts.extraCss : "";
+
           const clone = el.cloneNode(true);
+		  clone.classList.add("capture-root");
           const holder = document.createElement("div");
           holder.style.position = "fixed";
           holder.style.left = "-10000px";
@@ -1233,12 +1223,22 @@
           holder.style.background = "#fff";
           holder.style.padding = "12px";
           holder.style.zIndex = "999999";
+
+          // Styles appliqués uniquement à la capture (clone offscreen)
+          if (hideSelectors.length || extraCss) {
+              const st = document.createElement("style");
+              st.textContent =
+                  hideSelectors.map(sel => `.capture-root ${sel}{display:none !important;}`).join("\n") +
+                  (extraCss ? `\n${extraCss}\n` : "");
+              holder.appendChild(st);
+          }
+
           holder.appendChild(clone);
           document.body.appendChild(holder);
 
-          new Promise(r => setTimeout(r, 50));
+          await new Promise(requestAnimationFrame);
 
-          const canvas = html2canvas(clone, {
+          const canvas = await html2canvas(clone, {
               backgroundColor: "#ffffff",
               scale: 2,
               useCORS: true
@@ -1402,7 +1402,7 @@
               if (el) el.value = "";
           });
           renderProcessList();
-          renderProcessRiskCount(id);
+          renderProcessRiskCount(null);
 
           $("processRiskTable").innerHTML = "";
       }
@@ -1495,7 +1495,7 @@
           if (sel) sel.value = processId;
 
           // rendu onglet procédures
-          renderProceduresTab?.();
+          //renderProceduresTab?.();
 
           // Si une seule procédure existe pour ce processus => l'ouvrir directement
           const procs = (state.procedures || []).filter(p => p.processId === processId);
@@ -1503,7 +1503,7 @@
               editProcedure(procs[0].id);
           } else {
               // sinon on laisse la liste filtrée et la fiche vide
-              clearProcedureForm?.();
+              //clearProcedureForm?.();
           }
       }
 
@@ -3282,10 +3282,26 @@
           clearForm();
       }
 
-      function buildReviewHtml() {
+      async function buildReviewHtml() {
           const wrap = document.createElement("div");
           wrap.className = "word-export";
 
+          /* ========= STYLES ========= */
+		  wrap.innerHTML += `
+            <style>
+              /* Portrait (par défaut) */
+              @page WordSectionPortrait { size: A4; }
+              div.WordSectionPortrait { page: WordSectionPortrait; }
+
+              /* Paysage */
+              @page WordSectionLandscape { size: A4 landscape; mso-page-orientation: landscape; }
+              div.WordSectionLandscape { page: WordSectionLandscape; }
+
+              .page-break { page-break-after: always; }
+              .img-full { width: 100%; height: auto; display: block; margin: 0 auto; }
+              .center { text-align: center; }
+            </style>
+		  `;
           /* ========= PAGE DE GARDE ========= */
           wrap.innerHTML += `
 		<h1>Revue de direction – ISO 9001</h1>
@@ -3308,18 +3324,22 @@
 
           // === Cartographie macroprocessus (PNG) ===
           const mpWrap = document.getElementById("mpMapWrap");
-          const mpPng = captureElementOffscreen(mpWrap, 1100);
-
-          const mpHtml = mpPng ?
-              `<img src="${mpPng}" style="width:100%; max-width:680px; display:block; margin:12px auto;" />` :
-              `<p><em>Cartographie indisponible.</em></p>`;
+          const mpPng = await captureElementOffscreen(mpWrap, 1400);
 
           wrap.innerHTML += `
-            <h2>1. Cartographie des macroprocessus</h2>
-            <p>Cette cartographie présente les macroprocessus de pilotage, métier et support.</p>
-            ${mpHtml}
+            <div class="WordSectionLandscape">
+              <h2 class="center">1. Cartographie des macroprocessus</h2>
+              ${
+                mpPng
+                  ? `<img class="img-full" src="${mpPng}" />`
+                  : `<p class="center"><em>Cartographie indisponible.</em></p>`
+              }
+            </div>
             <div class="page-break"></div>
-            `;
+          `;
+
+          // Retour portrait pour le contenu détaillé
+          wrap.innerHTML += `<div class="WordSectionPortrait">`;
           state.macroprocesses.forEach(mp => {
               wrap.innerHTML += `
 		  <h3>${mp.id} – ${mp.name}</h3>
@@ -3328,7 +3348,7 @@
 		`;
           });
 
-          wrap.innerHTML += `<div class="page-break"></div>`;
+          wrap.innerHTML += `</div><div class="page-break"></div>`;
 
           /* ========= 2. PROCESSUS & PROCÉDURES ========= */
           wrap.innerHTML += `<h2>2. Processus et procédures</h2>`;
@@ -3375,31 +3395,70 @@
           wrap.innerHTML += `<div class="page-break"></div>`;
 
           /* ========= 3. MATRICE DES RISQUES ========= */
-          wrap.innerHTML += `<h2>3. Matrice des risques</h2>`;
-          wrap.innerHTML += `
-		<table>
-		  <tr>
-			<th>Risque</th><th>Domaine</th><th>Processus</th>
-			<th>Score initial</th><th>Niveau</th><th>Score résiduel</th><th>Statut</th>
-		  </tr>
-		  ${(state.risks || []).map(computeRisk).map(r => `
-			<tr>
-			  <td>${r.id} – ${r.title}</td>
-			  <td>${r.domain || "—"}</td>
-			  <td>${r.processId || "—"}</td>
-			  <td>${r.score}</td>
-			  <td>${r.level}</td>
-			  <td>${r.control?.implemented ? r.scoreRes : "—"}</td>
-			  <td>${r.control?.implemented && r.scoreRes <= 7 ? "Maîtrisé" : "À renforcer"}</td>
-			</tr>
-		  `).join("")}
-		</table>
-	  `;
+          // Image de la matrice (page seule + paysage)
+          const matrixWrap = document.getElementById("riskMatrixWrap");
+          // Masque le panneau latéral (colonne droite) dans la capture
+          // .matrix-area = grille 2 colonnes (gauche: matrice, droite: filtre d’affichage + liste)
+          const matrixPng = await captureElementOffscreen(matrixWrap, 1600, {
+              hideSelectors: [".matrix-area > div:nth-child(2)"]
+          });
 
-          wrap.innerHTML += `<div class="page-break"></div>`;
+          wrap.innerHTML += `
+            <div class="WordSectionLandscape">
+              <h2 class="center">3. Matrice des risques</h2>
+              ${
+                matrixPng
+                  ? `<img class="img-full" src="${matrixPng}" />`
+                  : `<p class="center"><em>Matrice indisponible.</em></p>`
+              }
+            </div>
+            <div class="page-break"></div>
+          `;
+
+          // (Optionnel mais souvent utile) : garder le tableau détaillé en portrait sur la page suivante
+          wrap.innerHTML += `
+            <div class="WordSectionPortrait">
+              <h3>Liste des risques (détail)</h3>
+              <table>
+                <tr>
+                  <th>Risque</th><th>Domaine</th><th>Processus</th>
+                  <th>Score initial</th><th>Niveau</th><th>Score résiduel</th><th>Statut</th>
+                </tr>
+                ${(state.risks || []).map(computeRisk).map(r => `
+                  <tr>
+                    <td>${r.id} – ${r.title}</td>
+                    <td>${r.domain || "—"}</td>
+                    <td>${r.processId || "—"}</td>
+                    <td>${r.score}</td>
+                    <td>${r.level}</td>
+                    <td>${r.control?.implemented ? r.scoreRes : "—"}</td>
+                    <td>${r.control?.implemented && r.scoreRes <= 7 ? "Maîtrisé" : "À renforcer"}</td>
+                  </tr>
+                `).join("")}
+              </table>
+            </div>
+            <div class="page-break"></div>
+          `;
 
           /* ========= 4. MACROPROCESSUS × DOMAINES ========= */
-          wrap.innerHTML += `<h2>4. Macroprocessus × Domaines</h2>`;
+          // Image Macroprocessus × Domaines (page seule + paysage)
+          const mpDomainsWrap = document.getElementById("tab-mp-domains");
+          const mpDomainsPng = await captureElementOffscreen(mpDomainsWrap, 640);
+
+          wrap.innerHTML += `
+            <div class="WordSectionLandscape">
+              <h2 class="center">4. Macroprocessus × Domaines</h2>
+              ${
+                mpDomainsPng
+                  ? `<img class="img-full" src="${mpDomainsPng}" />`
+                  : `<p class="center"><em>Vue Macroprocessus × Domaines indisponible.</em></p>`
+              }
+            </div>
+            <div class="page-break"></div>
+          `;
+
+          // (Optionnel) : garder le tableau en portrait sur la page suivante
+          wrap.innerHTML += `<div class="WordSectionPortrait"><h3>Détail (tableau)</h3>`;
 
           const {
               matrix,
@@ -3424,7 +3483,7 @@
 		</table>
 	  `;
 
-          wrap.innerHTML += `<div class="page-break"></div>`;
+          wrap.innerHTML += `</div><div class="page-break"></div>`;
 
           /* ========= 5. DECISIONS ========= */
           wrap.innerHTML += `
@@ -3555,44 +3614,50 @@
           }, 50);
       });
 
-      $("matrixFilterProcess")?.addEventListener("change", renderMatrix);
-      $("matrixFilterProcedure")?.addEventListener("change", renderMatrix);
+      $("btnExportPdf")?.addEventListener("click", async () => {
+          // html2pdf/html2canvas ne capture pas correctement un tab-pane Bootstrap caché (display:none)
+          // => on active temporairement l'onglet, on attend le layout, on exporte, puis on restaure.
 
-      $("btnClearMatrixFilters")?.addEventListener("click", () => {
-          $("matrixFilterProcess").value = "";
-          $("matrixFilterProcedure").value = "";
-          renderMatrix();
-      });
+          const prevActiveBtn = document.querySelector('#mainTabs .nav-link.active');
+          const prevTarget = prevActiveBtn?.getAttribute("data-bs-target") || null;
 
-      /*	  window.addEventListener("resize", () => requestAnimationFrame(renderMitigationArrows));
-      	  $("scroll", () => requestAnimationFrame(renderMitigationArrows), true);
-      */
+          // Active l'onglet "Maîtrise des domaines"
+          openTab("tab-domains");
 
-      $("btnExportPdf")?.addEventListener("click", () => {
+          // Attendre que Bootstrap applique show/active + que le layout se stabilise
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+
           const el = document.getElementById("tab-domains");
+          if (!el) {
+              // Restaure l'onglet précédent si possible
+              if (prevTarget) openTab(prevTarget.replace("#", ""));
+              alert("Export PDF impossible : section introuvable.");
+              return;
+          }
 
           const opt = {
               margin: 10,
               filename: "Revue_de_direction.pdf",
-              image: {
-                  type: "jpeg",
-                  quality: 0.98
-              },
+              image: { type: "jpeg", quality: 0.98 },
               html2canvas: {
-                  scale: 2
+                  scale: 2,
+                  backgroundColor: "#ffffff",
+                  useCORS: true
               },
-              jsPDF: {
-                  unit: "mm",
-                  format: "a4",
-                  orientation: "portrait"
-              }
+              jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
           };
 
-          html2pdf().set(opt).from(el).save();
+          try {
+              await html2pdf().set(opt).from(el).save();
+          } finally {
+              // Restaure l'onglet précédent
+              if (prevTarget) openTab(prevTarget.replace("#", ""));
+          }
       });
 
-      $("btnExportWord")?.addEventListener("click", () => {
-          const html = buildReviewHtml().outerHTML;
+      $("btnExportWord")?.addEventListener("click", async () => {
+          const html = (await buildReviewHtml()).outerHTML;
 
           const blob = window.htmlDocx.asBlob(html);
           const a = document.createElement("a");
@@ -3614,14 +3679,6 @@
               if (selP) selP.value = pr.processId;
           }
 
-          renderMatrix();
-      });
-
-      $("btnClearMatrixFilters")?.addEventListener("click", () => {
-          const p = document.getElementById("matrixFilterProcess");
-          const pr = document.getElementById("matrixFilterProcedure");
-          if (p) p.value = "";
-          if (pr) pr.value = "";
           renderMatrix();
       });
 
