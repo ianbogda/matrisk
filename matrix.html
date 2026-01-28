@@ -431,6 +431,10 @@
                 <div class="small-muted">Pilotage des risques, des processus et de la conformité</div>
             </div>
             <div class="d-flex gap-2">
+                <div class="form-check form-switch me-2">
+                    <input class="form-check-input" type="checkbox" id="toggleSimpleMode">
+                    <label class="form-check-label small-muted" for="toggleSimpleMode">Mode simplifié</label>
+                </div>
                 <button class="btn btn-outline-primary d-none" id="btnExportPdf">Export PDF</button>
                 <button class="btn btn-outline-primary" id="btnExportWord">Export Word</button>
 
@@ -460,6 +464,11 @@
             <li class="nav-item">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-risques" type="button">
                     Risques
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-control-plan" type="button">
+                    Plan de contrôle interne
                 </button>
             </li>
             <li class="nav-item">
@@ -857,6 +866,34 @@
                                     <input class="form-control" id="controlName" placeholder="Revue mensuelle du classement à J+30 + rappel automatique">
                                 </div>
 
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="controlKey">
+                                        <label class="form-check-label" for="controlKey">🔑 Contrôle clé</label>
+                                    </div>
+                                    <div class="form-text">Un contrôle clé est prioritaire dans le suivi et le plan de contrôle interne.</div>
+                                </div>
+
+                                <div class="col-6">
+                                    <label class="form-label">Responsable</label>
+                                    <input class="form-control" id="controlOwner" placeholder="Agent comptable / SGE / Chef cuisine…">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Fréquence</label>
+                                    <select class="form-select" id="controlFrequency">
+                                        <option value="">—</option>
+                                        <option>Quotidien</option>
+                                        <option>Hebdomadaire</option>
+                                        <option>Mensuel</option>
+                                        <option>Trimestriel</option>
+                                        <option>Annuel</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Preuve attendue</label>
+                                    <input class="form-control" id="controlEvidence" placeholder="Visa PJ / Fiche HACCP / Tableau habilitations…">
+                                </div>
+
                                 <div class="col-6">
                                     <label class="form-label">ΔP (−4 à 0)</label>
                                     <input class="form-control" type="number" min="-4" max="0" id="dP" value="-1">
@@ -884,7 +921,7 @@
                     </div>
 
                     <!-- Matrix + filter list -->
-                    <div class="col-12 col-xl-8">
+                    <div class="col-12 col-xl-8" id="riskMatrixCol">
 
                         <div class="card shadow-soft p-3">
                             <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
@@ -929,7 +966,7 @@
                                     </div>
                                 </div>
 
-                                <div>
+                                <div id="matrixSidePanel">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <div class="fw-semibold">Filtre d’affichage</div>
                                         <div class="btn-group btn-group-sm" role="group" aria-label="filter buttons">
@@ -951,7 +988,7 @@
 
                         <!-- Register -->
                         <div class="card shadow-soft p-3 mt-3">
-                            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
+                            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2" id="riskRegisterCard">
                                 <h2 class="h5 mb-0">Registre</h2>
                                 <div class="d-flex gap-2 flex-wrap">
                                     <input class="form-control" style="max-width:340px;" id="search" placeholder="Rechercher (code, domaine, texte)…">
@@ -985,6 +1022,78 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-control-plan">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <h2 class="h5 mb-1">Plan de contrôle interne (généré)</h2>
+                                    <div class="small-muted">Basé sur les risques, leur niveau et les contrôles (dont 🔑 contrôles clés).</div>
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <select class="form-select form-select-sm" style="max-width:220px;" id="pciFilterOwner">
+                                        <option value="">— Tous responsables —</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" style="max-width:220px;" id="pciFilterStatus">
+                                        <option value="">— Tous statuts —</option>
+                                        <option value="todo">À faire</option>
+                                        <option value="done">Réalisé</option>
+                                    </select>
+                                    <div class="form-check form-switch ms-2">
+                                        <input class="form-check-input" type="checkbox" id="pciOnlyKey">
+                                        <label class="form-check-label small-muted" for="pciOnlyKey">Uniquement contrôles clés</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Macroprocessus</th>
+                                            <th>Processus</th>
+                                            <th>Risque</th>
+                                            <th>Niveau</th>
+                                            <th>🔑</th>
+                                            <th>Contrôle</th>
+                                            <th>Responsable</th>
+                                            <th>Fréquence</th>
+                                            <th>Preuve attendue</th>
+                                            <th>État</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pciTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="card shadow-soft p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h3 class="h6 mb-0">Vue opérationnelle (mode simplifié)</h3>
+                                <div class="small-muted">“Qu’est-ce que je dois contrôler, concrètement ?”</div>
+                            </div>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Risque</th>
+                                            <th>Contrôle</th>
+                                            <th>Fréquence</th>
+                                            <th>Responsable</th>
+                                            <th>État</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1047,17 +1156,16 @@
       /**
        * M@TRISK - Pilotage des risques, des processus et de la conformité
        *
-       * @version 0.0.3
+       * @version 0.1.0
        * @author Yann Bogdanovic
        * @description
        *  - M@TRISK
        * @changelog
-       *  v0.0.3
-       *    - factorisation
-       *    - typographie
-	   *    - fix exports pdf et word
+       *  v0.1.0
+       *    - Plan de controle interne
+	   *    - Intégration dans les exports
        */
-      const APP_VERSION = "M@TRISK - v0.0.3";
+      const APP_VERSION = "M@TRISK - v0.1.0";
       window.addEventListener("DOMContentLoaded", () => {
           const el = document.getElementById("app-version");
           if (el) el.textContent = APP_VERSION;
@@ -2336,7 +2444,17 @@
               // Backward compat: ensure visible flag exists
               parsed.risks = parsed.risks.map(r => ({
                   visible: true,
-                  ...r
+                  ...r,
+                  control: {
+                      name: r.control?.name || "",
+                      dP: (r.control?.dP ?? -1),
+                      dI: (r.control?.dI ?? 0),
+                      implemented: !!r.control?.implemented,
+                      key: !!r.control?.key,
+                      owner: r.control?.owner || "",
+                      frequency: r.control?.frequency || "",
+                      evidence: r.control?.evidence || ""
+                  }
               }));
               return parsed;
           } catch (e) {
@@ -2370,6 +2488,10 @@
           $("i").value = 3;
           $("justif").value = "";
           $("controlName").value = "";
+          $("controlKey").checked = false;
+          $("controlOwner").value = "";
+          $("controlFrequency").value = "";
+          $("controlEvidence").value = "";
           $("dP").value = -1;
           $("dI").value = 0;
           $("controlImplemented").value = "no";
@@ -2402,6 +2524,10 @@
               justification: ($("justif").value || "").trim(),
               control: {
                   name: ($("controlName").value || "").trim(),
+                  key: !!$("controlKey").checked,
+                  owner: ($("controlOwner").value || "").trim(),
+                  frequency: ($("controlFrequency").value || "").trim(),
+                  evidence: ($("controlEvidence").value || "").trim(),
                   dP: clampInt($("dP").value, -4, 0),
                   dI: clampInt($("dI").value, -4, 0),
                   implemented: $("controlImplemented").value === "yes"
@@ -2435,6 +2561,10 @@
           $("justif").value = r.justification || "";
 
           $("controlName").value = r.control?.name || "";
+          $("controlKey").checked = !!r.control?.key;
+          $("controlOwner").value = r.control?.owner || "";
+          $("controlFrequency").value = r.control?.frequency || "";
+          $("controlEvidence").value = r.control?.evidence || "";
           $("dP").value = r.control?.dP ?? -1;
           $("dI").value = r.control?.dI ?? 0;
           $("controlImplemented").value = (r.control?.implemented ? "yes" : "no");
@@ -2656,6 +2786,149 @@
           return Array.from(ids);
       }
 
+      // ===== Plan de contrôle interne (PCI) ========================
+      function getMacroprocessIdForProcess(processId) {
+          const p = (state.processes || []).find(x => String(x.id) === String(processId));
+          return p?.macroprocessId || "";
+      }
+      function getMacroprocessLabel(mpId) {
+          const mp = (state.macroprocesses || []).find(x => String(x.id) === String(mpId));
+          return mp ? `${mp.id} — ${mp.name}` : (mpId || "—");
+      }
+      function getProcessLabel(processId) {
+          const p = (state.processes || []).find(x => String(x.id) === String(processId));
+          return p ? `${p.id} — ${p.name}` : (processId || "—");
+      }
+      function riskControlStatus(r) {
+          if (!r.control || !(r.control.name || "").trim()) return "todo";
+          if (!r.control.implemented) return "todo";
+          return "done";
+      }
+      function generateControlPlan() {
+          const computed = (state.risks || []).map(computeRisk);
+          const plan = computed
+              .filter(r => r.visible !== false)
+              .filter(r => {
+                  const isHigh = (r.level === "Critique" || r.level === "Élevé");
+                  const isKey = !!r.control?.key;
+                  return isHigh || isKey;
+              })
+              .map(r => {
+                  const mpId = getMacroprocessIdForProcess(r.processId);
+                  return {
+                      mpId,
+                      mpLabel: getMacroprocessLabel(mpId),
+                      processId: r.processId,
+                      processLabel: getProcessLabel(r.processId),
+                      riskId: r.id,
+                      riskTitle: r.title,
+                      level: r.level,
+                      key: !!r.control?.key,
+                      controlName: (r.control?.name || "").trim() || "—",
+                      owner: (r.control?.owner || "").trim() || "—",
+                      frequency: (r.control?.frequency || "").trim() || "—",
+                      evidence: (r.control?.evidence || "").trim() || "—",
+                      status: riskControlStatus(r)
+                  };
+              })
+              .sort((a, b) => {
+                  const order = { "Critique": 3, "Élevé": 2, "Significatif": 1, "Modéré": 0, "Faible": -1 };
+                  return (order[b.level] - order[a.level]) || a.riskId.localeCompare(b.riskId);
+              });
+          return plan;
+      }
+
+      function renderPciFilters(plan) {
+          const selOwner = document.getElementById("pciFilterOwner");
+          if (selOwner) {
+              const owners = Array.from(new Set(plan.map(x => x.owner).filter(x => x && x !== "—"))).sort();
+              const cur = selOwner.value || "";
+              selOwner.innerHTML = `<option value="">— Tous responsables —</option>` + owners.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+              selOwner.value = cur;
+          }
+      }
+
+      function renderControlPlan() {
+          const tb = document.getElementById("pciTableBody");
+          const tbOps = document.getElementById("opsTableBody");
+          if (!tb || !tbOps) return;
+
+          const plan = generateControlPlan();
+          renderPciFilters(plan);
+
+          const fOwner = document.getElementById("pciFilterOwner")?.value || "";
+          const fStatus = document.getElementById("pciFilterStatus")?.value || "";
+          const onlyKey = !!document.getElementById("pciOnlyKey")?.checked;
+
+          const filtered = plan.filter(x => {
+              if (onlyKey && !x.key) return false;
+              if (fOwner && x.owner !== fOwner) return false;
+              if (fStatus && x.status !== fStatus) return false;
+              return true;
+          });
+
+          tb.innerHTML = "";
+          filtered.forEach(x => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                  <td>${escapeHtml(x.mpLabel)}</td>
+                  <td>${escapeHtml(x.processLabel)}</td>
+                  <td>
+                    <div class="fw-semibold">${escapeHtml(x.riskId)} — ${escapeHtml(x.riskTitle)}</div>
+                  </td>
+                  <td><span class="badge ${badgeClass(x.level)}">${escapeHtml(x.level)}</span></td>
+                  <td class="text-center">${x.key ? "✅" : "—"}</td>
+                  <td>${escapeHtml(x.controlName)}</td>
+                  <td>${escapeHtml(x.owner)}</td>
+                  <td>${escapeHtml(x.frequency)}</td>
+                  <td>${escapeHtml(x.evidence)}</td>
+                  <td>${x.status === "done" ? `<span class="badge text-bg-success">Réalisé</span>` : `<span class="badge text-bg-warning">À faire</span>`}</td>
+              `;
+              tb.appendChild(tr);
+          });
+
+          // Vue opérationnelle : uniquement "À faire", triée avec contrôles clés en premier
+          const ops = plan
+              .filter(x => x.status === "todo")
+              .sort((a, b) => (Number(b.key) - Number(a.key)) || a.riskId.localeCompare(b.riskId));
+
+          tbOps.innerHTML = "";
+          ops.forEach(x => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                  <td><div class="fw-semibold">${escapeHtml(x.riskId)} — ${escapeHtml(x.riskTitle)}</div></td>
+                  <td>${escapeHtml(x.controlName)} ${x.key ? `<span class="badge text-bg-primary ms-1">clé</span>` : ""}</td>
+                  <td>${escapeHtml(x.frequency)}</td>
+                  <td>${escapeHtml(x.owner)}</td>
+                  <td><span class="badge text-bg-warning">À faire</span></td>
+              `;
+              tbOps.appendChild(tr);
+          });
+      }
+
+      // ===== Mode simplifié ========================================
+      function applySimpleModeUI() {
+          const on = !!document.getElementById("toggleSimpleMode")?.checked;
+
+          // ✅ On garde la matrice visible (colonne principale), mais on masque ce qui surcharge :
+          // - panneau latéral (liste des risques + filtres d'affichage)
+          // - registre (tableau)
+          const side = document.getElementById("matrixSidePanel");
+          if (side) side.classList.toggle("d-none", on);
+
+          const reg = document.getElementById("riskRegisterCard");
+          if (reg) reg.classList.toggle("d-none", on);
+
+          // Optionnel : masquer aussi la ligne de filtres processus/procédure au-dessus de la matrice
+          // (si tu veux la conserver en mode simplifié, supprime les 3 lignes ci-dessous)
+          const filterRow = document.getElementById("matrixFilterProcess")?.closest(".row");
+          if (filterRow) filterRow.classList.toggle("d-none", on);
+
+          // Comme la taille de la matrice change (panneau latéral masqué), on resynchronise l'overlay SVG
+          if (typeof ensureMatrixOverlaySized === "function") {
+              requestAnimationFrame(() => ensureMatrixOverlaySized());
+          }
+      }
 
       let selectedMacroprocessId = null;
 
@@ -3248,6 +3521,8 @@
           renderMatrixProcedureFilter();
           renderMpDomainMatrix();
           renderDomainMasteryTab();
+          renderControlPlan();
+          applySimpleModeUI();
       }
 
       // Import/export -----------------------------------------------
@@ -3315,7 +3590,8 @@
 		  <li>2. Processus et procédures</li>
 		  <li>3. Matrice des risques</li>
 		  <li>4. Macroprocessus × Domaines</li>
-		  <li>5. Décisions de direction</li>
+		  <li>5. Plan de contrôle interne</li>
+		  <li>6. Décisions de direction</li>
 		</ul>
 		<div class="page-break"></div>
 	  `;
@@ -3324,7 +3600,7 @@
 
           // === Cartographie macroprocessus (PNG) ===
           const mpWrap = document.getElementById("mpMapWrap");
-          const mpPng = await captureElementOffscreen(mpWrap, 1400);
+          const mpPng = await captureElementOffscreen(mpWrap, 640);
 
           wrap.innerHTML += `
             <div class="WordSectionLandscape">
@@ -3441,24 +3717,7 @@
           `;
 
           /* ========= 4. MACROPROCESSUS × DOMAINES ========= */
-          // Image Macroprocessus × Domaines (page seule + paysage)
-          const mpDomainsWrap = document.getElementById("tab-mp-domains");
-          const mpDomainsPng = await captureElementOffscreen(mpDomainsWrap, 640);
-
-          wrap.innerHTML += `
-            <div class="WordSectionLandscape">
-              <h2 class="center">4. Macroprocessus × Domaines</h2>
-              ${
-                mpDomainsPng
-                  ? `<img class="img-full" src="${mpDomainsPng}" />`
-                  : `<p class="center"><em>Vue Macroprocessus × Domaines indisponible.</em></p>`
-              }
-            </div>
-            <div class="page-break"></div>
-          `;
-
-          // (Optionnel) : garder le tableau en portrait sur la page suivante
-          wrap.innerHTML += `<div class="WordSectionPortrait"><h3>Détail (tableau)</h3>`;
+          wrap.innerHTML += `<div class="WordSectionPortrait"><h2 class="center">4. Macroprocessus × Domaines</h2>`;
 
           const {
               matrix,
@@ -3485,11 +3744,57 @@
 
           wrap.innerHTML += `</div><div class="page-break"></div>`;
 
-          /* ========= 5. DECISIONS ========= */
+          /* ========= 5. PLAN DE CONTRÔLE INTERNE ========= */
+          wrap.innerHTML += `
+            <h2>5. Plan de contrôle interne</h2>
+            <p>Généré automatiquement à partir des risques (niveau Élevé/Critique ou contrôles clés).</p>
+          `;
+
+          // Génère le PCI depuis le modèle (fonction ajoutée dans les évolutions précédentes)
+          const plan = (typeof generateControlPlan === "function") ? generateControlPlan() : [];
+
+          if (!plan.length) {
+              wrap.innerHTML += `<p><em>Aucun élément de plan (vérifier la cartographie des risques et les contrôles).</em></p>`;
+          } else {
+              wrap.innerHTML += `
+                <table>
+                  <tr>
+                    <th>Macroprocessus</th>
+                    <th>Processus</th>
+                    <th>Risque</th>
+                    <th>Niveau</th>
+                    <th>🔑</th>
+                    <th>Contrôle</th>
+                    <th>Responsable</th>
+                    <th>Fréquence</th>
+                    <th>Preuve attendue</th>
+                    <th>État</th>
+                  </tr>
+                  ${plan.map(x => `
+                    <tr>
+                      <td>${escapeHtml(x.mpLabel || "—")}</td>
+                      <td>${escapeHtml(x.processLabel || "—")}</td>
+                      <td>${escapeHtml((x.riskId || "—") + " — " + (x.riskTitle || ""))}</td>
+                      <td>${escapeHtml(x.level || "—")}</td>
+                      <td style="text-align:center;">${x.key ? "✅" : "—"}</td>
+                      <td>${escapeHtml(x.controlName || "—")}</td>
+                      <td>${escapeHtml(x.owner || "—")}</td>
+                      <td>${escapeHtml(x.frequency || "—")}</td>
+                      <td>${escapeHtml(x.evidence || "—")}</td>
+                      <td>${x.status === "done" ? "Réalisé" : "À faire"}</td>
+                    </tr>
+                  `).join("")}
+                </table>
+              `;
+          }
+
+          wrap.innerHTML += `</div><div class="page-break"></div>`;
+
+          /* ========= 6. DECISIONS ========= */
           wrap.innerHTML += `
 		  <div class="page-break"></div>
 
-		  <h2>5. Décisions de direction</h2>
+		  <h2>6. Décisions de direction</h2>
 
 		  <p>
 			Cette section est destinée à formaliser les décisions prises lors de la revue
@@ -3555,6 +3860,22 @@
           clearForm();
       });
 
+      // PCI / Mode simplifié events
+      $("toggleSimpleMode")?.addEventListener("change", () => {
+          applySimpleModeUI();
+          // En mode simplifié, on pousse naturellement vers le PCI
+          if ($("toggleSimpleMode").checked) openTab("tab-control-plan");
+      });
+      $("pciFilterOwner")?.addEventListener("change", renderControlPlan);
+      $("pciFilterStatus")?.addEventListener("change", renderControlPlan);
+      $("pciOnlyKey")?.addEventListener("change", renderControlPlan);
+
+      // Bootstrap tabs : quand on ouvre l'onglet PCI, on (re)génère
+      $("mainTabs")?.addEventListener("shown.bs.tab", (ev) => {
+          const target = ev.target?.getAttribute?.("data-bs-target") || "";
+          if (target === "#tab-control-plan") renderControlPlan();
+      });
+
       $("btnSaveMP").addEventListener("click", upsertMacroprocessFromForm);
       $("btnViewProcedures")?.addEventListener("click", () => {
           const pid = selectedProcessId;
@@ -3615,44 +3936,35 @@
       });
 
       $("btnExportPdf")?.addEventListener("click", async () => {
-          // html2pdf/html2canvas ne capture pas correctement un tab-pane Bootstrap caché (display:none)
-          // => on active temporairement l'onglet, on attend le layout, on exporte, puis on restaure.
+          // Export PDF : le contenu doit être VISIBLE (sinon html2canvas capture du vide).
+          // On force l'onglet PCI actif, on attend 2 frames, puis on exporte.
 
           const prevActiveBtn = document.querySelector('#mainTabs .nav-link.active');
           const prevTarget = prevActiveBtn?.getAttribute("data-bs-target") || null;
 
-          // Active l'onglet "Maîtrise des domaines"
-          openTab("tab-domains");
-
-          // Attendre que Bootstrap applique show/active + que le layout se stabilise
+          openTab("tab-control-plan");
           await new Promise(requestAnimationFrame);
           await new Promise(requestAnimationFrame);
 
-          const el = document.getElementById("tab-domains");
+          const el = document.getElementById("tab-control-plan");
           if (!el) {
-              // Restaure l'onglet précédent si possible
-              if (prevTarget) openTab(prevTarget.replace("#", ""));
-              alert("Export PDF impossible : section introuvable.");
+              if (prevTarget) openTab(prevTarget.replace("#",""));
+              alert("Export PDF impossible : section PCI introuvable.");
               return;
           }
 
           const opt = {
               margin: 10,
-              filename: "Revue_de_direction.pdf",
+              filename: "Plan_de_controle_interne.pdf",
               image: { type: "jpeg", quality: 0.98 },
-              html2canvas: {
-                  scale: 2,
-                  backgroundColor: "#ffffff",
-                  useCORS: true
-              },
+              html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
               jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
           };
 
           try {
               await html2pdf().set(opt).from(el).save();
           } finally {
-              // Restaure l'onglet précédent
-              if (prevTarget) openTab(prevTarget.replace("#", ""));
+              if (prevTarget) openTab(prevTarget.replace("#",""));
           }
       });
 
