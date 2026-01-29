@@ -259,6 +259,11 @@
             filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .10));
         }
 
+		.mp-tag.selected svg {
+			outline: 3px solid rgba(13, 110, 253, .65);
+			outline-offset: 4px;
+		}
+
         .mp-label {
             font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
         }
@@ -1156,14 +1161,13 @@
       /**
        * M@TRISK - Pilotage des risques, des processus et de la conformité
        *
-       * @version 0.1.0
+       * @version 0.1.1
        * @author Yann Bogdanovic
        * @description
        *  - M@TRISK
        * @changelog
-       *  v0.1.0
-       *    - Plan de controle interne
-	   *    - Intégration dans les exports
+       *  v0.1.1
+       *    - meilleure UI et navigation entre les onglets
        */
       const APP_VERSION = "M@TRISK - v0.1.0";
       window.addEventListener("DOMContentLoaded", () => {
@@ -1292,6 +1296,7 @@
           // Events (sur le svg : plus simple)
           svg.addEventListener("click", () => {
               if (typeof editMacroprocess === "function") editMacroprocess(mp.id);
+			  highlightMacroprocess(mp.id);
           });
 
           svg.addEventListener("dblclick", (e) => {
@@ -2870,10 +2875,13 @@
           tb.innerHTML = "";
           filtered.forEach(x => {
               const tr = document.createElement("tr");
+              tr.dataset.mpId = x.mpId || "";
+              tr.dataset.procId = x.processId || "";
+              tr.dataset.riskId = x.riskId || "";
               tr.innerHTML = `
-                  <td>${escapeHtml(x.mpLabel)}</td>
-                  <td>${escapeHtml(x.processLabel)}</td>
-                  <td>
+                  <td class="pci-mp">${escapeHtml(x.mpLabel)}</td>
+                  <td class="pci-proc">${escapeHtml(x.processLabel)}</td>
+                  <td class="pci-risk">
                     <div class="fw-semibold">${escapeHtml(x.riskId)} — ${escapeHtml(x.riskTitle)}</div>
                   </td>
                   <td><span class="badge ${badgeClass(x.level)}">${escapeHtml(x.level)}</span></td>
@@ -2895,8 +2903,9 @@
           tbOps.innerHTML = "";
           ops.forEach(x => {
               const tr = document.createElement("tr");
+              tr.dataset.riskId = x.riskId || "";
               tr.innerHTML = `
-                  <td><div class="fw-semibold">${escapeHtml(x.riskId)} — ${escapeHtml(x.riskTitle)}</div></td>
+                  <td class="ops-risk"><div class="fw-semibold">${escapeHtml(x.riskId)} — ${escapeHtml(x.riskTitle)}</div></td>
                   <td>${escapeHtml(x.controlName)} ${x.key ? `<span class="badge text-bg-primary ms-1">clé</span>` : ""}</td>
                   <td>${escapeHtml(x.frequency)}</td>
                   <td>${escapeHtml(x.owner)}</td>
@@ -2904,8 +2913,105 @@
               `;
               tbOps.appendChild(tr);
           });
+
+          // Assure le binding des double-clics (délégation, fait une seule fois)
+          bindPciDblClicks();
       }
 
+      function highlightMacroprocess(mpId) {
+          document.querySelectorAll(".mp-tag").forEach(el => {
+              el.classList.toggle("selected", el.dataset.mpId === mpId);
+          });
+      }
+
+      // Double-clics PCI : navigation contextuelle
+      let pciDblClicksBound = false;
+      function bindPciDblClicks() {
+          if (pciDblClicksBound) return;
+
+          const tb = document.getElementById("pciTableBody");
+          const tbOps = document.getElementById("opsTableBody");
+          if (!tb || !tbOps) return;
+
+          // Plan de contrôle interne (généré)
+          tb.addEventListener("dblclick", (e) => {
+              const td = e.target?.closest?.("td");
+              const tr = e.target?.closest?.("tr");
+              if (!td || !tr) return;
+
+              // Macroprocessus => onglet Macroprocessus + fiche
+              if (td.classList.contains("pci-mp") && tr.dataset.mpId) {
+                  e.preventDefault();
+                  openTab("tab-macroprocessus");
+
+                  if (typeof editMacroprocess === "function") {
+                      editMacroprocess(tr.dataset.mpId);
+                  }
+				  
+                  // Synchronise aussi l'onglet Processus (colonne gauche) pour éviter toute incohérence
+                  // (le select existe même si l'onglet n'est pas actif)
+                  selectedMacroprocessForProcessTab = tr.dataset.mpId;
+                  const procSel = document.getElementById("procMpSelect");
+                  if (procSel) procSel.value = tr.dataset.mpId;
+                  const procBadge = document.getElementById("procMpBadge");
+                  if (procBadge) procBadge.textContent = tr.dataset.mpId;
+
+                  // surbrillance cartographie
+                  setTimeout(() => {
+                      highlightMacroprocess(tr.dataset.mpId);
+                  }, 50);
+                  return;
+              }
+
+              // Processus => onglet Processus + fiche
+              if (td.classList.contains("pci-proc") && tr.dataset.procId) {
+                  e.preventDefault();
+                  openTab("tab-processus");
+                  if (typeof editProcess === "function") editProcess(tr.dataset.procId);
+              openTab("tab-processus");
+
+              // 🔎 Récupération du processus pour connaître son macroprocessus
+              const proc = (state.processes || []).find(p => p.id === tr.dataset.procId);
+              if (proc?.macroprocessId) {
+                  // synchronise le macroprocessus dans la colonne gauche
+                  selectedMacroprocessForProcessTab = proc.macroprocessId;
+                  const sel = document.getElementById("procMpSelect");
+                  if (sel) sel.value = proc.macroprocessId;
+              }
+
+              // rendu cohérent de la liste + chargement fiche
+              renderProcessTab();
+              if (typeof editProcess === "function") editProcess(tr.dataset.procId);
+                  return;
+              }
+
+              // Risque => onglet Risques + fiche
+              if (td.classList.contains("pci-risk") && tr.dataset.riskId) {
+                  e.preventDefault();
+                  openTab("tab-risques");
+                  setTimeout(() => {
+                      if (typeof editRisk === "function") editRisk(tr.dataset.riskId);
+                  }, 50);
+              }
+          });
+
+          // Vue opérationnelle (mode simplifié) : double-clic => fiche du risque
+          tbOps.addEventListener("dblclick", (e) => {
+              const td = e.target?.closest?.("td");
+              const tr = e.target?.closest?.("tr");
+              if (!td || !tr) return;
+              if (!td.classList.contains("ops-risk")) return;
+              if (!tr.dataset.riskId) return;
+
+              e.preventDefault();
+              openTab("tab-risques");
+              setTimeout(() => {
+                  if (typeof editRisk === "function") editRisk(tr.dataset.riskId);
+              }, 50);
+          });
+
+          pciDblClicksBound = true;
+      }
       // ===== Mode simplifié ========================================
       function applySimpleModeUI() {
           const on = !!document.getElementById("toggleSimpleMode")?.checked;
