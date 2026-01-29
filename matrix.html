@@ -1103,6 +1103,93 @@
                 </div>
             </div>
 
+            <!-- Modal : suivi d'exécution / historisation -->
+            <div class="modal fade" id="controlRunModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Suivi d’exécution du contrôle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <input type="hidden" id="crRiskId">
+
+                    <div class="row g-2 mb-2">
+                      <div class="col-12">
+                        <div class="small text-muted">Macroprocessus</div>
+                        <div class="fw-semibold" id="crMp">—</div>
+                      </div>
+                      <div class="col-12">
+                        <div class="small text-muted">Processus</div>
+                        <div class="fw-semibold" id="crProc">—</div>
+                      </div>
+                      <div class="col-12">
+                        <div class="small text-muted">Contrôle</div>
+                        <div class="fw-semibold" id="crControl">—</div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="small text-muted">Responsable</div>
+                        <div class="fw-semibold" id="crOwner">—</div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="small text-muted">Fréquence</div>
+                        <div class="fw-semibold" id="crFreq">—</div>
+                      </div>
+                      <div class="col-12">
+                        <div class="small text-muted">Preuve attendue</div>
+                        <div class="fw-semibold" id="crEvidenceExpected">—</div>
+                      </div>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <div class="row g-2">
+                      <div class="col-md-4">
+                        <label class="form-label">Date d’exécution</label>
+                        <input type="date" class="form-control" id="crDate">
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Statut</label>
+                        <select class="form-select" id="crStatus">
+                          <option value="done">Réalisé</option>
+                          <option value="todo">À faire</option>
+                        </select>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Preuve produite</label>
+                        <input class="form-control" id="crEvidenceDone" placeholder="Lien / référence / PJ…">
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Commentaire</label>
+                        <textarea class="form-control" id="crNote" rows="2" placeholder="Constat, écarts, actions correctives…"></textarea>
+                      </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <h6 class="mb-2">Historique</h6>
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Statut</th>
+                            <th>Preuve produite</th>
+                            <th>Commentaire</th>
+                          </tr>
+                        </thead>
+                        <tbody id="crHistoryBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-primary" id="btnCrSave">Enregistrer</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="tab-pane fade" id="tab-domains">
                 <div class="row g-3">
                     <!-- Synthèse globale -->
@@ -1161,13 +1248,13 @@
       /**
        * M@TRISK - Pilotage des risques, des processus et de la conformité
        *
-       * @version 0.1.1
+       * @version 0.1.2
        * @author Yann Bogdanovic
        * @description
        *  - M@TRISK
        * @changelog
-       *  v0.1.1
-       *    - meilleure UI et navigation entre les onglets
+       *  v0.1.2
+       *    - Ajout historisation des controle du PDCI
        */
       const APP_VERSION = "M@TRISK - v0.1.0";
       window.addEventListener("DOMContentLoaded", () => {
@@ -2439,11 +2526,13 @@
           try {
               const raw = localStorage.getItem(STORAGE_KEY);
               if (!raw) return {
-                  risks: seedRisks()
+                  risks: seedRisks(),
+				  controlRuns: []
               };
               const parsed = JSON.parse(raw);
               if (!parsed || !Array.isArray(parsed.risks)) return {
-                  risks: seedRisks()
+                  risks: seedRisks(),
+				  controlRuns: []
               };
 
               // Backward compat: ensure visible flag exists
@@ -2461,10 +2550,13 @@
                       evidence: r.control?.evidence || ""
                   }
               }));
+              // Backward compat: suivi d'exécution des contrôles
+              if (!Array.isArray(parsed.controlRuns)) parsed.controlRuns = [];
               return parsed;
           } catch (e) {
               return {
-                  risks: seedRisks()
+                  risks: seedRisks(),
+				  controlRuns: []
               };
           }
       }
@@ -2804,10 +2896,82 @@
           const p = (state.processes || []).find(x => String(x.id) === String(processId));
           return p ? `${p.id} — ${p.name}` : (processId || "—");
       }
+
+      // ---- Historisation exécution contrôles ----------------------
+      function todayIso() {
+          const d = new Date();
+          const pad = (n) => String(n).padStart(2, "0");
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      }
+
+      function toDateSafe(isoYmd) {
+          if (!isoYmd) return null;
+          const d = new Date(String(isoYmd) + "T00:00:00");
+          return Number.isNaN(d.getTime()) ? null : d;
+      }
+
+      function isoWeekKey(d) {
+          // ISO week: Thursday in current week decides the year.
+          const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+          const dayNum = date.getUTCDay() || 7;
+          date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+          const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+          const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+          return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+      }
+
+      function quarterKey(d) {
+          const q = Math.floor(d.getMonth() / 3) + 1;
+          return `${d.getFullYear()}-Q${q}`;
+      }
+
+      function isRunCurrentForFrequency(runIso, frequency) {
+          const runD = toDateSafe(runIso);
+          if (!runD) return false;
+          const now = new Date();
+          const freq = String(frequency || "").trim().toLowerCase();
+
+          if (freq === "quotidien") {
+              return runIso === todayIso();
+          }
+          if (freq === "hebdomadaire") {
+              return isoWeekKey(runD) === isoWeekKey(now);
+          }
+          if (freq === "mensuel") {
+              return runD.getFullYear() === now.getFullYear() && runD.getMonth() === now.getMonth();
+          }
+          if (freq === "trimestriel") {
+              return quarterKey(runD) === quarterKey(now);
+          }
+          if (freq === "annuel") {
+              return runD.getFullYear() === now.getFullYear();
+          }
+          // fréquence vide / autre => on considère "valide" si un run existe
+          return true;
+      }
+
+      function getControlRunsForRisk(riskId) {
+          const rid = String(riskId || "").toUpperCase();
+          return (state.controlRuns || [])
+              .filter(x => String(x.riskId || "").toUpperCase() === rid)
+              .slice()
+              .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+      }
+
+      function getLatestControlRunForRisk(riskId) {
+          const runs = getControlRunsForRisk(riskId);
+          return runs.length ? runs[0] : null;
+      }
+
       function riskControlStatus(r) {
+          // prérequis : contrôle défini + effectif
           if (!r.control || !(r.control.name || "").trim()) return "todo";
           if (!r.control.implemented) return "todo";
-          return "done";
+
+          // statut basé sur la dernière exécution historisée
+          const last = getLatestControlRunForRisk(r.id);
+          if (!last || last.status !== "done") return "todo";
+          return isRunCurrentForFrequency(last.date, r.control.frequency) ? "done" : "todo";
       }
       function generateControlPlan() {
           const computed = (state.risks || []).map(computeRisk);
@@ -2890,7 +3054,26 @@
                   <td>${escapeHtml(x.owner)}</td>
                   <td>${escapeHtml(x.frequency)}</td>
                   <td>${escapeHtml(x.evidence)}</td>
-                  <td>${x.status === "done" ? `<span class="badge text-bg-success">Réalisé</span>` : `<span class="badge text-bg-warning">À faire</span>`}</td>
+                  <td class="nowrap">
+                    ${x.status === "done"
+                      ? `<span class="badge text-bg-success">Réalisé</span>`
+                      : `<span class="badge text-bg-warning">À faire</span>`
+                    }
+                    <div class="btn-group btn-group-sm ms-2" role="group">
+                      <button type="button"
+                              class="btn btn-outline-success"
+                              data-pci-action="run"
+                              ${x.controlName === "—" ? "disabled" : ""}>
+                        ✓
+                      </button>
+                      <button type="button"
+                              class="btn btn-outline-secondary"
+                              data-pci-action="history"
+                              ${x.controlName === "—" ? "disabled" : ""}>
+                        🕘
+                      </button>
+                    </div>
+                  </td>
               `;
               tb.appendChild(tr);
           });
@@ -2909,13 +3092,159 @@
                   <td>${escapeHtml(x.controlName)} ${x.key ? `<span class="badge text-bg-primary ms-1">clé</span>` : ""}</td>
                   <td>${escapeHtml(x.frequency)}</td>
                   <td>${escapeHtml(x.owner)}</td>
-                  <td><span class="badge text-bg-warning">À faire</span></td>
+                  <td class="nowrap">
+                    <span class="badge text-bg-warning">À faire</span>
+                    <div class="btn-group btn-group-sm ms-2" role="group">
+                      <button type="button"
+                              class="btn btn-outline-success"
+                              data-ops-action="run"
+                              ${x.controlName === "—" ? "disabled" : ""}>
+                        ✓
+                      </button>
+                      <button type="button"
+                              class="btn btn-outline-secondary"
+                              data-ops-action="history"
+                              ${x.controlName === "—" ? "disabled" : ""}>
+                        🕘
+                      </button>
+                    </div>
+                  </td>
               `;
               tbOps.appendChild(tr);
           });
 
-          // Assure le binding des double-clics (délégation, fait une seule fois)
-          bindPciDblClicks();
+          // Bind actions (délégation, 1 seule fois)
+          bindControlRunActions();
+      }
+
+      // ---- UI + actions suivi d'exécution -------------------------
+      let controlRunActionsBound = false;
+      function bindControlRunActions() {
+          if (controlRunActionsBound) return;
+          const tb = document.getElementById("pciTableBody");
+          const tbOps = document.getElementById("opsTableBody");
+          if (!tb || !tbOps) return;
+
+          const openModal = (riskId) => {
+              const rid = String(riskId || "").toUpperCase();
+              const plan = generateControlPlan();
+              const item = plan.find(x => String(x.riskId || "").toUpperCase() === rid);
+              if (!item) return;
+
+              document.getElementById("crRiskId").value = item.riskId || "";
+              document.getElementById("crMp").textContent = item.mpLabel || "—";
+              document.getElementById("crProc").textContent = item.processLabel || "—";
+              document.getElementById("crControl").textContent = item.controlName || "—";
+              document.getElementById("crOwner").textContent = item.owner || "—";
+              document.getElementById("crFreq").textContent = item.frequency || "—";
+              document.getElementById("crEvidenceExpected").textContent = item.evidence || "—";
+
+              document.getElementById("crDate").value = todayIso();
+              document.getElementById("crStatus").value = "done";
+              document.getElementById("crEvidenceDone").value = "";
+              document.getElementById("crNote").value = "";
+
+              // table historique
+              const runs = getControlRunsForRisk(item.riskId);
+              const tbody = document.getElementById("crHistoryBody");
+              tbody.innerHTML = runs.length ? runs.map(r => `
+                <tr>
+                  <td class="mono">${escapeHtml(r.date || "—")}</td>
+                  <td>${r.status === "done"
+                        ? `<span class="badge text-bg-success">Réalisé</span>`
+                        : `<span class="badge text-bg-warning">À faire</span>`}</td>
+                  <td>${escapeHtml(r.evidenceDone || "—")}</td>
+                  <td>${escapeHtml(r.note || "")}</td>
+                </tr>
+              `).join("") : `<tr><td colspan="4" class="text-muted">Aucune exécution historisée.</td></tr>`;
+
+              const modalEl = document.getElementById("controlRunModal");
+              const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+              modal.show();
+          };
+
+          const quickRun = (riskId) => {
+              const rid = String(riskId || "").toUpperCase();
+              const plan = generateControlPlan();
+              const item = plan.find(x => String(x.riskId || "").toUpperCase() === rid);
+              if (!item) return;
+
+              // enregistre une exécution "Réalisé" à la date du jour
+              state.controlRuns ??= [];
+              state.controlRuns.push({
+                  riskId: item.riskId,
+                  processId: item.processId || "",
+                  mpId: item.mpId || "",
+                  controlName: item.controlName || "",
+                  owner: item.owner || "",
+                  frequency: item.frequency || "",
+                  evidenceExpected: item.evidence || "",
+                  status: "done",
+                  date: todayIso(),
+                  evidenceDone: "",
+                  note: ""
+              });
+              saveState();
+              renderControlPlan();
+          };
+
+          tb.addEventListener("click", (e) => {
+              const btn = e.target.closest("[data-pci-action]");
+              if (!btn) return;
+              const tr = btn.closest("tr");
+              const riskId = tr?.dataset?.riskId;
+              if (!riskId) return;
+              e.preventDefault();
+              const a = btn.dataset.pciAction;
+              if (a === "run") quickRun(riskId);
+              if (a === "history") openModal(riskId);
+          });
+
+          tbOps.addEventListener("click", (e) => {
+              const btn = e.target.closest("[data-ops-action]");
+              if (!btn) return;
+             const tr = btn.closest("tr");
+              const riskId = tr?.dataset?.riskId;
+              if (!riskId) return;
+              e.preventDefault();
+              const a = btn.dataset.opsAction;
+              if (a === "run") quickRun(riskId);
+              if (a === "history") openModal(riskId);
+          });
+
+          // save modal form
+          document.getElementById("btnCrSave")?.addEventListener("click", () => {
+              const riskId = (document.getElementById("crRiskId").value || "").trim().toUpperCase();
+              if (!riskId) return;
+              const date = (document.getElementById("crDate").value || "").trim();
+              const status = (document.getElementById("crStatus").value || "done").trim();
+              const evidenceDone = (document.getElementById("crEvidenceDone").value || "").trim();
+              const note = (document.getElementById("crNote").value || "").trim();
+
+              const plan = generateControlPlan();
+              const item = plan.find(x => String(x.riskId || "").toUpperCase() === riskId);
+              if (!item) return;
+
+              state.controlRuns ??= [];
+              state.controlRuns.push({
+                  riskId: item.riskId,
+                  processId: item.processId || "",
+                  mpId: item.mpId || "",
+                  controlName: item.controlName || "",
+                  owner: item.owner || "",
+                  frequency: item.frequency || "",
+                  evidenceExpected: item.evidence || "",
+                  status,
+                  date: date || todayIso(),
+                  evidenceDone,
+                  note
+              });
+              saveState();
+              bootstrap.Modal.getOrCreateInstance(document.getElementById("controlRunModal")).hide();
+              renderControlPlan();
+          });
+
+          controlRunActionsBound = true;
       }
 
       function highlightMacroprocess(mpId) {
@@ -2925,7 +3254,7 @@
       }
 
       // Double-clics PCI : navigation contextuelle
-      let pciDblClicksBound = false;
+/*      let pciDblClicksBound = false;
       function bindPciDblClicks() {
           if (pciDblClicksBound) return;
 
@@ -3012,6 +3341,7 @@
 
           pciDblClicksBound = true;
       }
+*/
       // ===== Mode simplifié ========================================
       function applySimpleModeUI() {
           const on = !!document.getElementById("toggleSimpleMode")?.checked;
